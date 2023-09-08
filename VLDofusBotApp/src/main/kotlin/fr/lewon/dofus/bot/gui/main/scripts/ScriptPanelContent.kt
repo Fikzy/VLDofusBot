@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import fr.lewon.dofus.bot.gui.main.scripts.globalparameters.GlobalScriptParametersContents
 import fr.lewon.dofus.bot.gui.main.scripts.parameters.ScriptParametersContent
 import fr.lewon.dofus.bot.gui.main.scripts.scriptinfo.CurrentScriptInfoContent
 import fr.lewon.dofus.bot.gui.main.scripts.selector.ScriptSelectorContent
@@ -28,6 +29,7 @@ fun ScriptPanelContent() {
             }
             Spacer(Modifier.fillMaxHeight().weight(1f))
         }
+        GlobalScriptParametersContents()
         AnimatedVisibility(
             ScriptsUiUtil.isScriptStarted(),
             enter = expandVertically(expandFrom = Alignment.Bottom),
