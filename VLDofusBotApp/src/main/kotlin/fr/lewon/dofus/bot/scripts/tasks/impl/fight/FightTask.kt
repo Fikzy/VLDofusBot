@@ -289,7 +289,7 @@ open class FightTask(
         RetryUtil.tryUntilSuccess(
             { MouseUtil.doubleLeftClick(gameInfo, target.getCenter()) },
             {
-                WaitUtil.waitUntil(2000) { isMoveRequested(gameInfo) }
+                WaitUtil.waitUntil(5000) { isMoveRequested(gameInfo) }
             },
             4
         ) ?: error("Couldn't request move to cell : ${target.cellId}")
@@ -309,7 +309,7 @@ open class FightTask(
                 MouseUtil.leftClick(gameInfo, target.getCenter())
             },
             {
-                WaitUtil.waitUntil(2000) { isSpellCastRequested(gameInfo) }
+                WaitUtil.waitUntil(5000) { isSpellCastRequested(gameInfo) }
             },
             4
         ) ?: error(buildSpellErrorMessage(characterSpell, target))
