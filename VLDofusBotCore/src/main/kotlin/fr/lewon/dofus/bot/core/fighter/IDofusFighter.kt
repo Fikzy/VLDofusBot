@@ -10,5 +10,6 @@ interface IDofusFighter {
     fun getSummonerId(): Double
     fun isStaticElement(): Boolean
     fun hasState(state: Int): Boolean
+    fun wasTelefraggedThisTurn(): Boolean
 
 }

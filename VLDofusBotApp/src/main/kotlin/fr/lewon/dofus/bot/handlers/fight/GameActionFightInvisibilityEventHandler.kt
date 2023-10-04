@@ -9,8 +9,7 @@ object GameActionFightInvisibilityEventHandler : IEventHandler<GameActionFightIn
 
     override fun onEventReceived(socketResult: GameActionFightInvisibilityMessage, connection: DofusConnection) {
         val gameInfo = GameSnifferUtil.getGameInfoByConnection(connection)
-        gameInfo.fightBoard.getFighterById(socketResult.targetId)?.let {
-            it.invisibilityState = socketResult.state
-        }
+        val fighter = gameInfo.fightBoard.getOrCreateFighterById(socketResult.targetId)
+        fighter.invisibilityState = socketResult.state
     }
 }

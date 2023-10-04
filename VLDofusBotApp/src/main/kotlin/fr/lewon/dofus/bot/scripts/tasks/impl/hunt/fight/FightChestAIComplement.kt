@@ -2,9 +2,9 @@ package fr.lewon.dofus.bot.scripts.tasks.impl.hunt.fight
 
 import fr.lewon.dofus.bot.game.DofusBoard
 import fr.lewon.dofus.bot.game.fight.FightBoard
-import fr.lewon.dofus.bot.game.fight.Fighter
 import fr.lewon.dofus.bot.game.fight.ai.DangerMap
 import fr.lewon.dofus.bot.game.fight.ai.complements.AIComplement
+import fr.lewon.dofus.bot.game.fight.fighter.Fighter
 
 class FightChestAIComplement : AIComplement() {
 

@@ -9,12 +9,15 @@ object GameMapMovementEventHandler : IEventHandler<GameMapMovementMessage> {
 
     override fun onEventReceived(socketResult: GameMapMovementMessage, connection: DofusConnection) {
         val gameInfo = GameSnifferUtil.getGameInfoByConnection(connection)
-        val toCellId = socketResult.keyMovements.last()
         val fighter = gameInfo.fightBoard.getFighterById(socketResult.actorId)
         if (fighter != null) {
-            gameInfo.fightBoard.move(fighter, toCellId)
+            val moveCells = socketResult.keyMovements.toMutableList()
+            moveCells.removeFirstOrNull()
+            for (cellId in moveCells) {
+                gameInfo.fightBoard.move(fighter, cellId)
+            }
         } else {
-            gameInfo.entityPositionsOnMapByEntityId[socketResult.actorId] = toCellId
+            gameInfo.entityPositionsOnMapByEntityId[socketResult.actorId] = socketResult.keyMovements.last()
         }
     }
 

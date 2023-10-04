@@ -13,14 +13,16 @@ import fr.lewon.dofus.bot.game.fight.ai.SpellSimulator
 import fr.lewon.dofus.bot.game.fight.ai.complements.AIComplement
 import fr.lewon.dofus.bot.game.fight.ai.complements.DefaultAIComplement
 import fr.lewon.dofus.bot.game.fight.ai.impl.DefaultFightAI
-import fr.lewon.dofus.bot.game.fight.operations.FightOperationType
+import fr.lewon.dofus.bot.game.fight.operations.CastSpellOperation
+import fr.lewon.dofus.bot.game.fight.operations.MoveOperation
+import fr.lewon.dofus.bot.game.fight.operations.PassTurnOperation
 import fr.lewon.dofus.bot.model.characters.sets.CharacterSetElement
 import fr.lewon.dofus.bot.scripts.tasks.BooleanDofusBotTask
 import fr.lewon.dofus.bot.sniffer.model.messages.NetworkMessage
 import fr.lewon.dofus.bot.sniffer.model.messages.game.actions.GameActionAcknowledgementMessage
 import fr.lewon.dofus.bot.sniffer.model.messages.game.actions.fight.GameActionFightCastOnTargetRequestMessage
 import fr.lewon.dofus.bot.sniffer.model.messages.game.actions.fight.GameActionFightCastRequestMessage
-import fr.lewon.dofus.bot.sniffer.model.messages.game.actions.sequence.SequenceEndMessage
+import fr.lewon.dofus.bot.sniffer.model.messages.game.actions.sequence.SequenceStartMessage
 import fr.lewon.dofus.bot.sniffer.model.messages.game.context.GameEntitiesDispositionMessage
 import fr.lewon.dofus.bot.sniffer.model.messages.game.context.GameMapMovementRequestMessage
 import fr.lewon.dofus.bot.sniffer.model.messages.game.context.fight.GameFightEndMessage
@@ -29,10 +31,10 @@ import fr.lewon.dofus.bot.sniffer.model.messages.game.context.fight.GameFightTur
 import fr.lewon.dofus.bot.sniffer.model.messages.game.context.fight.GameFightTurnStartPlayingMessage
 import fr.lewon.dofus.bot.sniffer.model.messages.game.context.fight.challenge.ChallengeModSelectMessage
 import fr.lewon.dofus.bot.sniffer.model.messages.game.context.roleplay.MapComplementaryInformationsDataMessage
-import fr.lewon.dofus.bot.sniffer.model.messages.game.initialization.SetCharacterRestrictionsMessage
 import fr.lewon.dofus.bot.util.filemanagers.impl.CharacterSetsManager
 import fr.lewon.dofus.bot.util.game.DofusColors
 import fr.lewon.dofus.bot.util.game.MousePositionsUtil
+import fr.lewon.dofus.bot.util.game.MoveUtil
 import fr.lewon.dofus.bot.util.game.RetryUtil
 import fr.lewon.dofus.bot.util.geometry.PointRelative
 import fr.lewon.dofus.bot.util.geometry.RectangleRelative
@@ -144,60 +146,76 @@ open class FightTask(
         MouseUtil.leftClick(gameInfo, MousePositionsUtil.getRestPosition(gameInfo))
 
         gameInfo.eventStore.clear()
+        ai.onFightStart(fightBoard)
         KeyboardUtil.sendKey(gameInfo, KeyEvent.VK_F1, 0)
         waitForMessage(gameInfo, GameFightTurnStartPlayingMessage::class.java, 60 * 1000)
 
-        ai.onFightStart(fightBoard)
         while (!isFightEnded(gameInfo)) {
+            ai.onNewTurn()
+            val turnLogItem = gameInfo.logger.addSubLog("New turn starting (${ai.currentTurn}) ...", logItem)
             MouseUtil.leftClick(gameInfo, MousePositionsUtil.getRestPosition(gameInfo), 400)
-
-            ai.onNewTurn(fightBoard)
             var nextOperation = ai.getNextOperation(fightBoard, null)
-            while (!isFightEnded(gameInfo) && nextOperation.type != FightOperationType.PASS_TURN) {
-                val actionSpellItem = gameInfo.logger.addSubLog("Next Operation", logItem)
-                logCharacteristics(gameInfo, actionSpellItem, fightBoard)
-                val targetCellId = nextOperation.targetCellId ?: error("Target cell id can't be null")
-                val target = gameInfo.dofusBoard.getCell(targetCellId)
-                if (nextOperation.type == FightOperationType.MOVE) {
-                    gameInfo.logger.addSubLog("Moving to cell : $targetCellId", actionSpellItem)
-                    processMove(gameInfo, target)
-                } else if (nextOperation.type == FightOperationType.SPELL) {
-                    val spellLevel = nextOperation.spell ?: error("Spell can't be null")
+            while (!isFightEnded(gameInfo) && nextOperation != PassTurnOperation) {
+                clearOperationsMessages(gameInfo)
+                val nextOperationLogItem = gameInfo.logger.addSubLog("Next Operation", turnLogItem)
+                logCharacteristics(gameInfo, nextOperationLogItem, fightBoard)
+                if (nextOperation is MoveOperation) {
+                    val moveCellId = nextOperation.cellIds.last()
+                    gameInfo.logger.addSubLog("Moving to cell : $moveCellId", nextOperationLogItem)
+                    val moveCell = gameInfo.dofusBoard.getCell(moveCellId)
+                    processMove(gameInfo, moveCell)
+                } else if (nextOperation is CastSpellOperation) {
+                    val spellLevel = nextOperation.spell
                     val characterSpell = characterSpellBySpellLevelId[spellLevel.id]
                         ?: error("No character spell found for spell level : ${spellLevel.id}")
                     val spellLogItem = gameInfo.logger.addSubLog(
-                        message = "Casting spell ${spellLevel.spellId} on cell : $targetCellId",
-                        parent = actionSpellItem,
+                        message = "Casting spell ${spellLevel.spellId} on cell : ${nextOperation.targetCellId}",
+                        parent = nextOperationLogItem,
                         subItemCapacity = 30
                     )
                     val expectedDamagesByFighter =
-                        getExpectedDamagesByFighter(gameInfo, fightBoard, spellLevel, targetCellId)
+                        getExpectedDamagesByFighter(gameInfo, fightBoard, spellLevel, nextOperation.targetCellId)
                     if (expectedDamagesByFighter.isNotEmpty()) {
                         val damagesLogItem = gameInfo.logger.addSubLog("Expected damages :", spellLogItem)
                         expectedDamagesByFighter.filter { it.value != 0 }.forEach {
                             gameInfo.logger.addSubLog("${it.value} on ${it.key}", damagesLogItem)
                         }
                     }
-                    castSpell(gameInfo, characterSpell, target)
+                    castSpell(gameInfo, characterSpell, gameInfo.dofusBoard.getCell(nextOperation.targetCellId))
                 }
+                val waitingAcknowledgementLogItem = gameInfo.logger.addSubLog(
+                    "Waiting acknowledgment ...",
+                    nextOperationLogItem
+                )
                 if (!waitForMessage(gameInfo, GameActionAcknowledgementMessage::class.java)) {
+                    gameInfo.logger.closeLog("KO", waitingAcknowledgementLogItem)
                     error("Action didn't get acknowledged by client")
                 }
-                if (fightBoard.getEnemyFighters().isEmpty()) {
+                gameInfo.logger.closeLog("OK", waitingAcknowledgementLogItem)
+                gameInfo.logger.closeLog("OK", nextOperationLogItem)
+                if (isFightEnded(gameInfo)) {
                     break
                 }
+                val calculatingLogItem = gameInfo.logger.addSubLog("Calculating next operation ...", turnLogItem)
                 nextOperation = ai.getNextOperation(fightBoard, nextOperation)
+                gameInfo.logger.closeLog("OK", calculatingLogItem)
             }
             KeyboardUtil.sendKey(gameInfo, KeyEvent.VK_F1, 0)
-            waitForMessage(gameInfo, GameFightTurnEndMessage::class.java)
-            waitForMessage(gameInfo, GameFightTurnStartPlayingMessage::class.java, timeOutMillis = 3 * 60 * 1000)
+            gameInfo.logger.addSubLog("Waiting for turn to end of fight to finish ...", turnLogItem)
+            if (!waitForMessage(gameInfo, GameFightTurnEndMessage::class.java)) {
+                error("Turn did not end")
+            }
+            gameInfo.logger.closeLog("OK - Turn finished", turnLogItem)
+            gameInfo.logger.addSubLog("Waiting for next turn to start or fight to finish ...", logItem)
+            if (!waitForMessage(gameInfo, GameFightTurnStartPlayingMessage::class.java, 3 * 60 * 1000)) {
+                error("Next turn did not start")
+            }
         }
-
-        WaitUtil.waitForEvents(gameInfo, SetCharacterRestrictionsMessage::class.java)
-        gameInfo.eventStore.clearUntilFirst(SetCharacterRestrictionsMessage::class.java)
-
+        gameInfo.logger.addSubLog("Fight ended, waiting until map is loaded ...", logItem)
+        MoveUtil.waitForMapChangeFinished(gameInfo)
         gameInfo.fightBoard.resetFighters()
 
+        gameInfo.logger.addSubLog("Closing fight end popups ...", logItem)
         WaitUtil.sleep(800)
         if (!WaitUtil.waitUntil { getCloseButtonLocation(gameInfo) != null || getLvlUpCloseButtonBounds(gameInfo) != null }) {
             error("Close button not found")
@@ -246,6 +264,15 @@ open class FightTask(
         }
     }
 
+    private fun clearOperationsMessages(gameInfo: GameInfo) {
+        gameInfo.eventStore.clear(GameFightTurnStartPlayingMessage::class.java)
+        gameInfo.eventStore.clear(SequenceStartMessage::class.java)
+        gameInfo.eventStore.clear(GameMapMovementRequestMessage::class.java)
+        gameInfo.eventStore.clear(GameActionFightCastOnTargetRequestMessage::class.java)
+        gameInfo.eventStore.clear(GameActionFightCastRequestMessage::class.java)
+        gameInfo.eventStore.clear(GameActionAcknowledgementMessage::class.java)
+    }
+
     protected open fun getFightAI(dofusBoard: DofusBoard, aiComplement: AIComplement): FightAI {
         return DefaultFightAI(dofusBoard, aiComplement)
     }
@@ -259,40 +286,45 @@ open class FightTask(
     }
 
     private fun processMove(gameInfo: GameInfo, target: DofusCell) {
-        gameInfo.eventStore.clear()
         RetryUtil.tryUntilSuccess(
             { MouseUtil.doubleLeftClick(gameInfo, target.getCenter()) },
-            { waitUntilMoveRequested(gameInfo) },
+            {
+                WaitUtil.waitUntil(2000) { isMoveRequested(gameInfo) }
+            },
             4
-        ) ?: error("Couldn't request move")
+        ) ?: error("Couldn't request move to cell : ${target.cellId}")
         waitForSequenceCompleteEnd(gameInfo)
     }
 
-    private fun waitUntilMoveRequested(gameInfo: GameInfo): Boolean = WaitUtil.waitUntil(1000) {
-        gameInfo.eventStore.getLastEvent(GameMapMovementRequestMessage::class.java) != null
-    }
+    private fun isMoveRequested(gameInfo: GameInfo): Boolean =
+        isFightEnded(gameInfo)
+            || gameInfo.eventStore.getLastEvent(SequenceStartMessage::class.java) != null
+            || gameInfo.eventStore.getLastEvent(GameMapMovementRequestMessage::class.java) != null
 
     private fun castSpell(gameInfo: GameInfo, characterSpell: CharacterSetElement, target: DofusCell) {
-        gameInfo.eventStore.clear()
         RetryUtil.tryUntilSuccess(
             {
                 val keyEvent = KeyEvent.getExtendedKeyCodeForChar(characterSpell.key.code)
                 KeyboardUtil.sendKey(gameInfo, keyEvent, 300, characterSpell.ctrlModifier)
                 MouseUtil.leftClick(gameInfo, target.getCenter())
             },
-            { waitUntilSpellCastRequested(gameInfo) },
+            {
+                WaitUtil.waitUntil(2000) { isSpellCastRequested(gameInfo) }
+            },
             4
         ) ?: error(buildSpellErrorMessage(characterSpell, target))
+        waitForSequenceCompleteEnd(gameInfo)
     }
+
+    private fun isSpellCastRequested(gameInfo: GameInfo): Boolean =
+        isFightEnded(gameInfo)
+            || gameInfo.eventStore.getLastEvent(SequenceStartMessage::class.java) != null
+            || gameInfo.eventStore.getLastEvent(GameActionFightCastOnTargetRequestMessage::class.java) != null
+            || gameInfo.eventStore.getLastEvent(GameActionFightCastRequestMessage::class.java) != null
 
     private fun buildSpellErrorMessage(characterSpell: CharacterSetElement, target: DofusCell): String {
         val spellName = characterSpell.elementId?.let(SpellManager::getSpell)?.name
         return "Couldn't cast spell [$spellName] on cell [${target.cellId}]"
-    }
-
-    private fun waitUntilSpellCastRequested(gameInfo: GameInfo): Boolean = WaitUtil.waitUntil(1000) {
-        gameInfo.eventStore.getLastEvent(GameActionFightCastOnTargetRequestMessage::class.java) != null
-            || gameInfo.eventStore.getLastEvent(GameActionFightCastRequestMessage::class.java) != null
     }
 
     private fun waitForSequenceCompleteEnd(gameInfo: GameInfo): Boolean = WaitUtil.waitUntil(10000) {
@@ -300,11 +332,11 @@ open class FightTask(
     }
 
     private fun isSequenceComplete(gameInfo: GameInfo): Boolean {
+        val currentSequence = gameInfo.currentSequence
         return gameInfo.eventStore.isAllEventsPresent(
-            SequenceEndMessage::class.java,
-            SequenceEndMessage::class.java,
+            SequenceStartMessage::class.java,
             GameActionAcknowledgementMessage::class.java
-        )
+        ) && (currentSequence.isFinished && currentSequence.fighterId == gameInfo.playerId)
     }
 
     private fun waitForMessage(

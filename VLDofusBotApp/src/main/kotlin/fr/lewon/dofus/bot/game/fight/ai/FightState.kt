@@ -1,84 +1,98 @@
 package fr.lewon.dofus.bot.game.fight.ai
 
 import fr.lewon.dofus.bot.core.model.charac.DofusCharacterBasicInfo
-import fr.lewon.dofus.bot.core.model.spell.*
+import fr.lewon.dofus.bot.core.model.spell.DofusSpellEffectGlobalType
+import fr.lewon.dofus.bot.core.model.spell.DofusSpellLevel
 import fr.lewon.dofus.bot.game.DofusBoard
-import fr.lewon.dofus.bot.game.DofusCell
 import fr.lewon.dofus.bot.game.fight.DofusCharacteristics
 import fr.lewon.dofus.bot.game.fight.FightBoard
-import fr.lewon.dofus.bot.game.fight.Fighter
 import fr.lewon.dofus.bot.game.fight.ai.complements.AIComplement
-import fr.lewon.dofus.bot.game.fight.operations.CooldownState
+import fr.lewon.dofus.bot.game.fight.cooldowns.CooldownState
+import fr.lewon.dofus.bot.game.fight.fighter.Fighter
+import fr.lewon.dofus.bot.game.fight.operations.CastSpellOperation
 import fr.lewon.dofus.bot.game.fight.operations.FightOperation
-import fr.lewon.dofus.bot.game.fight.operations.FightOperationType
+import fr.lewon.dofus.bot.game.fight.operations.MoveOperation
+import fr.lewon.dofus.bot.game.fight.operations.PassTurnOperation
+import fr.lewon.dofus.bot.game.fight.utils.FightMoveUtils
+import fr.lewon.dofus.bot.game.fight.utils.FightSpellUtils
 import kotlin.math.abs
-import kotlin.math.max
 
 class FightState(
-    private val fb: FightBoard,
+    private val fightBoard: FightBoard,
     private val cooldownState: CooldownState,
     private val aiComplement: AIComplement,
     private val dofusBoard: DofusBoard,
     private val dangerMap: DangerMap,
     private val spellSimulator: SpellSimulator = SpellSimulator(dofusBoard),
-    private val effectZoneCalculator: EffectZoneCalculator = EffectZoneCalculator(dofusBoard),
     private var lastOperation: FightOperation? = null
 ) {
 
     fun deepCopy(): FightState {
         return FightState(
-            fb.deepCopy(),
+            fightBoard.deepCopy(),
             cooldownState.deepCopy(),
             aiComplement,
             dofusBoard,
             dangerMap.deepCopy(),
             spellSimulator,
-            effectZoneCalculator,
             lastOperation
         )
     }
 
     private fun getCurrentFighter(): Fighter? {
-        return fb.getPlayerFighter()
+        return fightBoard.getPlayerFighter()
     }
 
     fun getPossibleOperations(): MutableList<FightOperation> {
         val currentFighter = getCurrentFighter() ?: return ArrayList()
-        val currentFighterPosition = currentFighter.cell
-
-        val currentFighterAp = DofusCharacteristics.ACTION_POINTS.getValue(currentFighter)
-        val currentFighterMp = DofusCharacteristics.MOVEMENT_POINTS.getValue(currentFighter)
-
         val options = ArrayList<FightOperation>()
-        options.add(FightOperation(FightOperationType.PASS_TURN))
+        options.add(PassTurnOperation)
         if (canMove(currentFighter)) {
-            for (cell in fb.getMoveCellsWithMpUsed(currentFighterMp, currentFighterPosition)) {
-                if (fb.getFighter(cell.first.cellId) != null) {
-                    continue
-                }
-                val operation = FightOperation(FightOperationType.MOVE, cell.first.cellId, dist = cell.second)
-                options.add(operation)
+            options.addAll(getPossibleMoveOperations(currentFighter))
+        }
+        options.addAll(getPossibleSpellOperations(currentFighter))
+        return options
+    }
+
+    private fun getPossibleMoveOperations(fighter: Fighter): List<MoveOperation> {
+        val options = ArrayList<MoveOperation>()
+        val currentFighterMp = DofusCharacteristics.MOVEMENT_POINTS.getValue(fighter)
+        val accessibleCells = FightMoveUtils.getMoveCells(fightBoard, currentFighterMp, fighter.cell)
+        for (cell in accessibleCells) {
+            if (fightBoard.getFighter(cell.cellId) != null) {
+                continue
+            }
+            val path = dofusBoard.getPath(fighter.cell, cell)
+            if (path != null) {
+                options.add(MoveOperation(path.map { it.cellId }))
             }
         }
-        val alignmentCalculatorByTarget = HashMap<Int, AlignmentCalculator>()
-        val spells = currentFighter.spells
-        for (spell in spells.filter { isSpellReady(currentFighter, it, cooldownState, currentFighterAp) }) {
-            for (cellId in getPossibleTargetCellIds(currentFighterPosition, spell)) {
-                val ac = alignmentCalculatorByTarget.computeIfAbsent(cellId) {
-                    AlignmentCalculator(dofusBoard, fb, currentFighterPosition.cellId, it)
+        return options
+    }
+
+    private fun getPossibleSpellOperations(fighter: Fighter): List<CastSpellOperation> {
+        val losCalculatorByTarget = HashMap<Int, LosCalculator>()
+        val options = ArrayList<CastSpellOperation>()
+        for (spell in getUsableSpells(fighter)) {
+            for (cellId in FightSpellUtils.getPossibleTargetCellIds(dofusBoard, fightBoard, fighter, spell)) {
+                val ac = losCalculatorByTarget.computeIfAbsent(cellId) {
+                    LosCalculator(fightBoard, fighter.cell.cellId, it)
                 }
-                if (canCastSpellOnTarget(currentFighter, spell, ac, cellId, cooldownState)) {
-                    val operation = FightOperation(FightOperationType.SPELL, cellId, spell)
-                    options.add(operation)
+                if (canCastSpellOnTarget(fighter, spell, ac, cellId, cooldownState)) {
+                    options.add(CastSpellOperation(spell, cellId))
                 }
             }
         }
         return options
     }
 
+    private fun getUsableSpells(fighter: Fighter): List<DofusSpellLevel> = fighter.spells.filter {
+        isSpellReady(fighter, it, cooldownState, DofusCharacteristics.ACTION_POINTS.getValue(fighter))
+    }
+
     private fun canMove(currentFighter: Fighter) = aiComplement.canMove(currentFighter)
-            && lastOperation?.type != FightOperationType.MOVE
-            && getTotalEvadeRatio(currentFighter) >= 1f
+        && lastOperation !is MoveOperation
+        && getTotalEvadeRatio(currentFighter) >= 1f
 
     private fun getTotalEvadeRatio(fighter: Fighter): Float = getNeighborEnemies(fighter)
         .map { getEvadeRatio(it, fighter) }
@@ -87,20 +101,20 @@ class FightState(
 
     private fun getEvadeRatio(tacklingFighter: Fighter, playerFighter: Fighter): Float {
         val tackle = DofusCharacteristics.TACKLE_BLOCK.getValue(tacklingFighter).toFloat() +
-                DofusCharacteristics.AGILITY.getValue(tacklingFighter).toFloat() / 10f
+            DofusCharacteristics.AGILITY.getValue(tacklingFighter).toFloat() / 10f
         val evasion = DofusCharacteristics.TACKLE_EVADE.getValue(playerFighter).toFloat() +
-                DofusCharacteristics.AGILITY.getValue(playerFighter).toFloat() / 10f
+            DofusCharacteristics.AGILITY.getValue(playerFighter).toFloat() / 10f
         return (evasion + 2f) / (2f * (tackle + 2f))
     }
 
     private fun canCastSpellOnTarget(
         currentFighter: Fighter,
         spell: DofusSpellLevel,
-        alignmentCalculator: AlignmentCalculator,
+        losCalculator: LosCalculator,
         targetCellId: Int,
         cooldownState: CooldownState,
     ): Boolean {
-        val fighter = fb.getFighter(targetCellId)
+        val fighter = fightBoard.getFighter(targetCellId)
         if (spell.needTakenCell && fighter == null || spell.needFreeCell && fighter != null) {
             return false
         }
@@ -109,42 +123,37 @@ class FightState(
             fighter?.takeIf { turnUseSpellStore.getUsesOnTarget(spell, it.id) >= spell.maxCastPerTarget }
                 ?.let { return false }
         }
-        return canCastSpell(currentFighter, spell, alignmentCalculator)
+        return canCastSpell(currentFighter, spell, losCalculator)
     }
 
     private fun canCastSpell(
         currentFighter: Fighter,
         spell: DofusSpellLevel,
-        alignmentCalculator: AlignmentCalculator,
-    ): Boolean {
-        return spell.statesCriterion.check(buildCharacterBasicInfo(currentFighter))
-                && (!isSpellAttack(spell) || aiComplement.canAttack(currentFighter))
-                && (!spell.castInLine && !spell.castInDiagonal
-                || spell.castInLine && alignmentCalculator.onSameLine
-                || spell.castInDiagonal && alignmentCalculator.onSameDiagonal)
-                && alignmentCalculator.dist in spell.minRange..getSpellMaxRange(spell, currentFighter)
-                && (!spell.castTestLos || alignmentCalculator.los)
-    }
+        losCalculator: LosCalculator,
+    ): Boolean = spell.statesCriterion.check(buildCharacterBasicInfo(currentFighter))
+        && (!isSpellAttack(spell) || aiComplement.canAttack(currentFighter))
+        && (!spell.castTestLos || losCalculator.los)
 
-    private fun buildCharacterBasicInfo(currentFighter: Fighter): DofusCharacterBasicInfo {
-        return DofusCharacterBasicInfo(
-            characterName = "",
-            breedId = -1,
-            finishedQuestsIds = emptyList(),
-            activeQuestsIds = emptyList(),
-            finishedObjectiveIds = emptyList(),
-            activeObjectiveIds = emptyList(),
-            disabledTransitionZaapMapIds = emptyList(),
-            states = currentFighter.states
-        )
-    }
+    private fun buildCharacterBasicInfo(currentFighter: Fighter): DofusCharacterBasicInfo = DofusCharacterBasicInfo(
+        characterName = "",
+        breedId = -1,
+        finishedQuestsIds = emptyList(),
+        activeQuestsIds = emptyList(),
+        finishedObjectiveIds = emptyList(),
+        activeObjectiveIds = emptyList(),
+        disabledTransitionZaapMapIds = emptyList(),
+        states = currentFighter.stateBuffs.values.map { it.stateId }.toList()
+    )
 
-    private fun isSpellAttack(spell: DofusSpellLevel): Boolean {
-        return spell.effects.firstOrNull { it.effectType.globalType == DofusSpellEffectGlobalType.ATTACK } != null
+    private fun isSpellAttack(spell: DofusSpellLevel): Boolean = spell.effects.any {
+        it.effectType.globalType == DofusSpellEffectGlobalType.ATTACK
     }
 
     private fun isSpellReady(
-        currentFighter: Fighter, spell: DofusSpellLevel, cooldownState: CooldownState, currentFighterAp: Int
+        currentFighter: Fighter,
+        spell: DofusSpellLevel,
+        cooldownState: CooldownState,
+        currentFighterAp: Int
     ): Boolean {
         val cooldownSpellStore = cooldownState.globalCooldownSpellStore.getCooldownSpellStore(currentFighter.id)
         val currentCooldown = cooldownSpellStore[spell] ?: 0
@@ -160,87 +169,45 @@ class FightState(
         return currentFighterAp >= spell.apCost
     }
 
-    private fun getSpellMaxRange(spell: DofusSpellLevel, currentFighter: Fighter): Int {
-        return if (spell.rangeCanBeBoosted) {
-            val range = DofusCharacteristics.RANGE.getValue(currentFighter)
-            max(spell.minRange, spell.maxRange + range)
-        } else spell.maxRange
-    }
-
     private fun getNeighborEnemies(currentFighter: Fighter): List<Fighter> {
         val playerPosition = currentFighter.cell
-        val enemies = fb.getAllFighters().filter { it.teamId != currentFighter.teamId }
+        val enemies = fightBoard.getAllFighters().filter { it.teamId != currentFighter.teamId }
         val neighborsIds = playerPosition.neighbors.map { it.cellId }
         return enemies.filter { neighborsIds.contains(it.cell.cellId) }
     }
 
-    private fun getPossibleTargetCellIds(currentFighterPosition: DofusCell, spell: DofusSpellLevel): List<Int> {
-        val effectTypes = spell.effects.map { it.effectType }
-        val isMovingSpell = (effectTypes.contains(DofusSpellEffectType.TELEPORT)
-                || effectTypes.contains(DofusSpellEffectType.DASH)) && !spell.needTakenCell
-        if (isMovingSpell) {
-            return dofusBoard.cellsAtRange(spell.minRange, spell.maxRange, currentFighterPosition)
-                .filter { it.first.isAccessible() }
-                .map { it.first.cellId }
-        }
-        val targets = spell.effects.flatMap { it.targets }
-        val fighterCells = getAffectedFighters(targets).map { it.cell.cellId }
-        if (spell.needTakenCell || spell.effects.all { it.rawZone.effectZoneType == DofusEffectZoneType.POINT }) {
-            return fighterCells
-        }
-        val effectZones = spell.effects.map { it.rawZone }
-        val allCells = fighterCells.flatMap {
-            effectZoneCalculator.getAffectedCells(currentFighterPosition.cellId, it, effectZones)
-        }
-        if (spell.needFreeCell) {
-            return allCells.filter { !fighterCells.contains(it) }
-        }
-        return allCells
-    }
-
-    private fun getAffectedFighters(spellTargets: List<DofusSpellTarget>): List<Fighter> {
-        val playerFighter = getCurrentFighter() ?: return emptyList()
-        return fb.getAllFighters().filter { fighter ->
-            spellTargets.any {
-                it.canHitTarget(playerFighter, fighter)
-            }
-        }
-    }
-
     fun makeMove(operation: FightOperation) {
         val currentFighter = getCurrentFighter() ?: error("Couldn't find current fighter")
-        val previousEnemyPositions = fb.getEnemyFighters().associateWith { it.cell.cellId }
-        when (operation.type) {
-            FightOperationType.MOVE -> {
-                val targetCellId = operation.targetCellId ?: error("Target cell id mandatory")
+        val previousEnemyPositions = fightBoard.getEnemyFighters().associateWith { it.cell.cellId }
+        when (operation) {
+            is MoveOperation -> {
+                val cellIds = operation.cellIds
+                val distance = cellIds.size
                 val currentMp = DofusCharacteristics.MOVEMENT_POINTS.getValue(currentFighter)
-                currentFighter.statsById[DofusCharacteristics.MOVEMENT_POINTS.id] = currentMp - (operation.dist ?: 0)
-                fb.move(currentFighter.id, targetCellId)
+                currentFighter.statsById[DofusCharacteristics.MOVEMENT_POINTS.id] = currentMp - distance
+                for (cellId in cellIds) {
+                    fightBoard.move(currentFighter.id, cellId)
+                }
             }
-            FightOperationType.SPELL -> {
-                val spell = operation.spell ?: error("Spell can't be null for SPELL operation")
-                val targetCellId = operation.targetCellId ?: error("Target cell id mandatory")
-                useSpell(currentFighter, spell, targetCellId)
-            }
-            FightOperationType.PASS_TURN -> {
-            }
+            is CastSpellOperation -> useSpell(currentFighter, operation.spell, operation.targetCellId)
+            else -> {}
         }
-        val deadFighters = fb.getAllFighters().filter { it.getCurrentHp() <= 0 }
+        val deadFighters = fightBoard.getAllFighters().filter { it.getCurrentHp() <= 0 }
         val refreshAllDanger = deadFighters.isNotEmpty()
         deadFighters.forEach {
-            fb.killFighter(it.id)
+            fightBoard.killFighter(it.id)
             dangerMap.remove(it.id)
         }
-        fb.getEnemyFighters().forEach {
+        fightBoard.getEnemyFighters().forEach {
             if (refreshAllDanger || previousEnemyPositions[it] != it.cell.cellId) {
-                dangerMap.recalculateDanger(dofusBoard, fb.deepCopy(), currentFighter, it)
+                dangerMap.recalculateDanger(dofusBoard, fightBoard.deepCopy(), currentFighter, it)
             }
         }
         lastOperation = operation
     }
 
     private fun useSpell(currentFighter: Fighter, spell: DofusSpellLevel, targetCellId: Int) {
-        val target = fb.getFighter(targetCellId)
+        val target = fightBoard.getFighter(targetCellId)
         val targetId = target?.id ?: Int.MAX_VALUE.toDouble()
         val turnUseSpellStore = cooldownState.globalTurnUseSpellStore.getTurnUseSpellStore(currentFighter.id)
         val cooldownSpellStore = cooldownState.globalCooldownSpellStore.getCooldownSpellStore(currentFighter.id)
@@ -250,19 +217,19 @@ class FightState(
         cooldownSpellStore[spell] = spell.minCastInterval
         val currentAp = DofusCharacteristics.ACTION_POINTS.getValue(currentFighter)
         currentFighter.statsById[DofusCharacteristics.ACTION_POINTS.id] = currentAp - spell.apCost
-        spellSimulator.simulateSpell(fb, currentFighter, spell, targetCellId)
+        spellSimulator.simulateSpell(fightBoard, currentFighter, spell, targetCellId)
     }
 
     fun evaluate(): Double {
-        val allies = fb.getAlliedFighters()
+        val allies = fightBoard.getAlliedFighters()
         val realAlliesCount = allies.filter { !it.isSummon() }.size
-        if (realAlliesCount == 0) {
-            return Int.MIN_VALUE.toDouble()
-        }
-        val enemies = fb.getEnemyFighters()
+        val enemies = fightBoard.getEnemyFighters()
         val realEnemiesCount = enemies.filter { !it.isSummon() }.size
-        if (realEnemiesCount == 0) {
-            return Int.MAX_VALUE.toDouble()
+
+        val resultScore = when {
+            realEnemiesCount == 0 -> Int.MAX_VALUE
+            realAlliesCount == 0 -> Int.MIN_VALUE
+            else -> 0
         }
         val alliesHp = allies.sumOf {
             (it.getCurrentHp() * (if (it.isSummon()) 0.1f else 1f)).toInt()
@@ -276,9 +243,9 @@ class FightState(
         var distScore = 0
         var apScore = 0
         var mpScore = 0
-        val playerFighter = fb.getPlayerFighter()
+        val playerFighter = fightBoard.getPlayerFighter()
         if (playerFighter != null) {
-            val closestEnemy = fb.getClosestEnemy()
+            val closestEnemy = fightBoard.getClosestEnemy()
             apScore = DofusCharacteristics.ACTION_POINTS.getValue(playerFighter) * 5
             mpScore = DofusCharacteristics.MOVEMENT_POINTS.getValue(playerFighter)
             if (closestEnemy != null) {
@@ -288,12 +255,12 @@ class FightState(
             }
         }
         return (realAlliesCount * 3000
-                - realEnemiesCount * 2000
-                + alliesHp
-                - enemiesHp
-                - danger
-                + distScore
-                + mpScore
-                + apScore).toDouble()
+            - realEnemiesCount * 2000
+            + alliesHp
+            - enemiesHp
+            - danger
+            + distScore
+            + mpScore
+            + apScore).toDouble() + resultScore
     }
 }

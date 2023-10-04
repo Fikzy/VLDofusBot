@@ -1,6 +1,7 @@
 package fr.lewon.dofus.bot.game.fight
 
 import fr.lewon.dofus.bot.core.d2o.managers.characteristic.CharacteristicManager
+import fr.lewon.dofus.bot.game.fight.fighter.Fighter
 
 enum class DofusCharacteristics(val id: Int) {
 

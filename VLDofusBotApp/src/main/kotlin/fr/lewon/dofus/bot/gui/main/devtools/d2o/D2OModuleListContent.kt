@@ -1,4 +1,4 @@
-package fr.lewon.dofus.bot.gui.main.devtools
+package fr.lewon.dofus.bot.gui.main.devtools.d2o
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -20,13 +20,13 @@ import androidx.compose.ui.unit.dp
 import fr.lewon.dofus.bot.core.d2o.D2OUtil
 import fr.lewon.dofus.bot.gui.custom.*
 import fr.lewon.dofus.bot.gui.util.AppColors
-import fr.lewon.dofus.bot.util.StringUtil
+import fr.lewon.dofus.bot.util.StringUtil.removeAccents
 
 @Composable
 fun D2OModuleListContent() {
-    val uiState = DevToolsUiUtil.getUiStateValue()
+    val uiState = D2ODevToolsUiUtil.getUiStateValue()
     val d2oModuleNames = D2OUtil.getModuleNames().filter {
-        StringUtil.removeAccents(it).contains(StringUtil.removeAccents(uiState.nameFilter), ignoreCase = true)
+        it.removeAccents().contains(uiState.nameFilter.removeAccents(), ignoreCase = true)
     }.sorted()
     val listState = rememberLazyListState()
     Column(modifier = Modifier.fillMaxSize().padding(5.dp).grayBoxStyle().padding(5.dp)) {
@@ -58,7 +58,7 @@ private fun HeaderLine() {
 }
 
 @Composable
-private fun FilterLine(uiState: DevToolsUiState) {
+private fun FilterLine(uiState: D2ODevToolsUiState) {
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
         CommonText(
             "Filter Name : ",
@@ -67,7 +67,7 @@ private fun FilterLine(uiState: DevToolsUiState) {
         )
         SimpleTextField(
             text = uiState.nameFilter,
-            onValueChange = { DevToolsUiUtil.updateNameFilter(it) },
+            onValueChange = { D2ODevToolsUiUtil.updateNameFilter(it) },
             modifier = Modifier.padding(4.dp).align(Alignment.CenterVertically),
         )
     }
@@ -75,13 +75,13 @@ private fun FilterLine(uiState: DevToolsUiState) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun D2OModuleCardContent(d2oModuleName: String, uiState: DevToolsUiState) {
+private fun D2OModuleCardContent(d2oModuleName: String, uiState: D2ODevToolsUiState) {
     val isHovered = remember { mutableStateOf(false) }
     val hoverAlpha = if (isHovered.value) 1f else 0.7f
     val backgroundColor = Color.DarkGray.copy(alpha = hoverAlpha)
     val selected = uiState.selectedD2OModule == d2oModuleName
     Row(
-        modifier = Modifier.onClick { DevToolsUiUtil.selectD2OModule(d2oModuleName) }
+        modifier = Modifier.onClick { D2ODevToolsUiUtil.selectD2OModule(d2oModuleName) }
             .border(BorderStroke(1.dp, Color.Black)).height(25.dp)
             .defaultHoverManager(isHovered)
     ) {

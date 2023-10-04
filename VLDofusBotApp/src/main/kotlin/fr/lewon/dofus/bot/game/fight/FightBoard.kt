@@ -6,14 +6,14 @@ import fr.lewon.dofus.bot.core.model.spell.DofusSpell
 import fr.lewon.dofus.bot.core.model.spell.DofusSpellLevel
 import fr.lewon.dofus.bot.core.utils.LockUtils.executeSyncOperation
 import fr.lewon.dofus.bot.game.DofusCell
+import fr.lewon.dofus.bot.game.fight.fighter.Fighter
+import fr.lewon.dofus.bot.game.fight.utils.FightSpellUtils
 import fr.lewon.dofus.bot.sniffer.model.types.game.character.characteristic.CharacterCharacteristic
-import fr.lewon.dofus.bot.sniffer.model.types.game.context.fight.GameFightCharacterInformations
-import fr.lewon.dofus.bot.sniffer.model.types.game.context.fight.GameFightFighterInformations
-import fr.lewon.dofus.bot.sniffer.model.types.game.context.fight.GameFightMonsterInformations
+import fr.lewon.dofus.bot.sniffer.model.types.game.context.EntityDispositionInformations
+import fr.lewon.dofus.bot.sniffer.model.types.game.context.fight.*
 import fr.lewon.dofus.bot.util.filemanagers.impl.CharacterSetsManager
 import fr.lewon.dofus.bot.util.network.info.GameInfo
 import java.util.concurrent.locks.ReentrantLock
-import kotlin.math.abs
 
 class FightBoard(private val gameInfo: GameInfo) {
 
@@ -22,26 +22,25 @@ class FightBoard(private val gameInfo: GameInfo) {
     private val fightersById = HashMap<Double, Fighter>()
     val deadFighters = ArrayList<Fighter>()
 
-    fun move(fromCellId: Int, toCellId: Int) {
+    fun move(fighterId: Double, toCellId: Int, isRollback: Boolean = false) {
         lock.executeSyncOperation {
-            getFighter(fromCellId)?.let { move(it, toCellId) }
+            move(getOrCreateFighterById(fighterId), toCellId, isRollback)
         }
     }
 
-    fun move(fighterId: Double, toCellId: Int) {
+    fun move(fighter: Fighter, toCellId: Int, isRollback: Boolean = false) {
         lock.executeSyncOperation {
-            fightersById[fighterId]?.let { move(it, toCellId) }
+            move(fighter, dofusBoard.getCell(toCellId), isRollback)
         }
     }
 
-    fun move(fighter: Fighter, toCellId: Int) {
+    fun move(fighter: Fighter, toCell: DofusCell, isRollback: Boolean = false) {
         lock.executeSyncOperation {
-            move(fighter, dofusBoard.getCell(toCellId))
-        }
-    }
-
-    fun move(fighter: Fighter, toCell: DofusCell) {
-        lock.executeSyncOperation {
+            if (isRollback) {
+                fighter.previousCellIds.removeLastOrNull()
+            } else {
+                fighter.previousCellIds.add(fighter.cell.cellId)
+            }
             fighter.cell = toCell
         }
     }
@@ -52,10 +51,9 @@ class FightBoard(private val gameInfo: GameInfo) {
         }
     }
 
-    fun killFighter(id: Double) {
+    fun killFighter(fighterId: Double) {
         lock.executeSyncOperation {
-            fightersById[id]?.let { deadFighters.add(it) }
-            fightersById.remove(id)
+            fightersById.remove(fighterId)?.let { deadFighters.add(it) }
         }
     }
 
@@ -68,6 +66,8 @@ class FightBoard(private val gameInfo: GameInfo) {
             val fighter = fightersById.computeIfAbsent(fighterId) {
                 Fighter(cell, fighterId, fighterInfo)
             }
+            fighter.initFighterInfo(fighterInfo)
+            fighter.cell = cell
             fighter.fighterInfo = fighterInfo
             fighter.spells = spells.map(DofusSpellLevel::copy)
             fighter.teamId = fighterInfo.spawnInfo.teamId
@@ -107,7 +107,7 @@ class FightBoard(private val gameInfo: GameInfo) {
 
     fun updateFighterCharacteristics(fighterId: Double, characteristics: List<CharacterCharacteristic>) {
         lock.executeSyncOperation {
-            fightersById[fighterId]?.let { updateFighterCharacteristics(it, characteristics) }
+            updateFighterCharacteristics(getOrCreateFighterById(fighterId), characteristics)
         }
     }
 
@@ -174,6 +174,18 @@ class FightBoard(private val gameInfo: GameInfo) {
         }
     }
 
+    fun getOrCreateFighterById(fighterId: Double): Fighter = lock.executeSyncOperation {
+        getFighterById(fighterId) ?: createOrUpdateFighter(createDefaultFighterInformation(fighterId))
+    }
+
+    private fun createDefaultFighterInformation(fighterId: Double) =
+        GameFightFighterInformations().also { fighterInfo ->
+            fighterInfo.contextualId = fighterId
+            fighterInfo.disposition = EntityDispositionInformations().also { it.cellId = -1 }
+            fighterInfo.spawnInfo = GameContextBasicSpawnInformation().also { it.teamId = -1 }
+            fighterInfo.stats = GameFightCharacteristics()
+        }
+
     fun lineOfSight(fromCell: Int, toCell: Int): Boolean {
         return lock.executeSyncOperation {
             lineOfSight(dofusBoard.getCell(fromCell), dofusBoard.getCell(toCell))
@@ -182,105 +194,7 @@ class FightBoard(private val gameInfo: GameInfo) {
 
     fun lineOfSight(fromCell: DofusCell, toCell: DofusCell): Boolean {
         return lock.executeSyncOperation {
-            doLineOfSight(fromCell, toCell)
-        }
-    }
-
-    private fun doLineOfSight(fromCell: DofusCell, toCell: DofusCell): Boolean {
-        val x0 = fromCell.col
-        val y0 = fromCell.row
-        val x1 = toCell.col
-        val y1 = toCell.row
-
-        var dx = abs(x1 - x0)
-        var dy = abs(y1 - y0)
-        var x = x0
-        var y = y0
-        var n = -1 + dx + dy
-        val xInc = if (x1 > x0) 1 else -1
-        val yInc = if (y1 > y0) 1 else -1
-        var error = dx - dy
-        dx *= 2
-        dy *= 2
-
-        when {
-            error > 0 -> {
-                x += xInc
-                error -= dy
-            }
-            error < 0 -> {
-                y += yInc
-                error += dx
-            }
-            else -> {
-                x += xInc
-                error -= dy
-                y += yInc
-                error += dx
-                n--
-            }
-        }
-
-        while (n > 0) {
-            val cell = dofusBoard.getCell(x, y) ?: error("Cell [$x ; $y] does not exist")
-            if (cell.isWall() || cell != fromCell && cell != toCell && isFighterHere(cell)) {
-                return false
-            }
-            when {
-                error > 0 -> {
-                    x += xInc
-                    error -= dy
-                }
-                error < 0 -> {
-                    y += yInc
-                    error += dx
-                }
-                else -> {
-                    x += xInc
-                    error -= dy
-                    y += yInc
-                    error += dx
-                    n--
-                }
-            }
-            n--
-        }
-        return true
-    }
-
-    fun getMoveCellsWithMpUsed(range: Int, fromCell: DofusCell): List<Pair<DofusCell, Int>> {
-        return lock.executeSyncOperation {
-            val cellsWithMpUsed = ArrayList<Pair<DofusCell, Int>>()
-            cellsWithMpUsed.add(fromCell to 0)
-            val accessibleCells = getMoveCellsWithMpUsed(range, listOf(fromCell))
-            cellsWithMpUsed.addAll(accessibleCells)
-            cellsWithMpUsed
-        }
-    }
-
-    fun getMoveCellsWithMpUsed(range: Int, initialFrontier: List<DofusCell>): List<Pair<DofusCell, Int>> {
-        return lock.executeSyncOperation {
-            val cellsWithMpUsed = ArrayList<Pair<DofusCell, Int>>()
-            val explored = ArrayList<Int>()
-            explored.addAll(initialFrontier.map { it.cellId })
-            var frontier = ArrayList<DofusCell>()
-            frontier.addAll(initialFrontier)
-            var dist = 1
-            for (i in 0 until range) {
-                val newFrontier = ArrayList<DofusCell>()
-                for (cell in frontier) {
-                    for (neighbor in cell.neighbors) {
-                        if (!explored.contains(neighbor.cellId) && !isFighterHere(neighbor) && neighbor.isAccessible()) {
-                            explored.add(neighbor.cellId)
-                            newFrontier.add(neighbor)
-                            cellsWithMpUsed.add(neighbor to dist)
-                        }
-                    }
-                }
-                dist++
-                frontier = newFrontier
-            }
-            cellsWithMpUsed
+            FightSpellUtils.isVisibleInLineOfSight(dofusBoard, this, fromCell, toCell)
         }
     }
 
@@ -288,6 +202,20 @@ class FightBoard(private val gameInfo: GameInfo) {
         return lock.executeSyncOperation {
             FightBoard(gameInfo).also {
                 it.fightersById.putAll(fightersById.entries.map { e -> e.key to e.value.deepCopy() })
+            }
+        }
+    }
+
+    fun triggerNewTurn() {
+        getPlayerFighter()?.let {
+            it.totalMp = DofusCharacteristics.MOVEMENT_POINTS.getValue(it)
+        }
+        getAllFighters().forEach {
+            it.stateBuffs.values.forEach { stateBuff ->
+                stateBuff.turnDuration -= 1
+            }
+            it.stateBuffs.entries.removeIf { stateBuff ->
+                stateBuff.value.turnDuration <= 0
             }
         }
     }

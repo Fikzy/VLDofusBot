@@ -1,5 +1,6 @@
 package fr.lewon.dofus.bot.handlers.fight
 
+import fr.lewon.dofus.bot.core.model.spell.DofusSpellEffectType
 import fr.lewon.dofus.bot.sniffer.DofusConnection
 import fr.lewon.dofus.bot.sniffer.model.messages.game.actions.fight.GameActionFightTeleportOnSameMapMessage
 import fr.lewon.dofus.bot.sniffer.store.IEventHandler
@@ -11,7 +12,10 @@ object GameActionFightTeleportOnSameMapEventHandler : IEventHandler<GameActionFi
         val gameInfo = GameSnifferUtil.getGameInfoByConnection(connection)
         val fighterId = socketResult.targetId
         val cellId = socketResult.cellId
-        gameInfo.fightBoard.move(fighterId, cellId)
+        val isRollback = gameInfo.currentSequence.spellLevelsStarted.flatMap { it.effects }.any {
+            it.effectType == DofusSpellEffectType.ROLLBACK_PREVIOUS_POSITION
+        }
+        gameInfo.fightBoard.move(fighterId, cellId, isRollback)
     }
 
 }

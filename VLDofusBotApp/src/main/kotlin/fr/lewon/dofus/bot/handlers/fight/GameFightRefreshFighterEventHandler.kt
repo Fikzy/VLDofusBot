@@ -6,10 +6,10 @@ import fr.lewon.dofus.bot.sniffer.store.IEventHandler
 import fr.lewon.dofus.bot.util.network.GameSnifferUtil
 
 object GameFightRefreshFighterEventHandler : IEventHandler<GameFightRefreshFighterMessage> {
+
     override fun onEventReceived(socketResult: GameFightRefreshFighterMessage, connection: DofusConnection) {
         val gameInfo = GameSnifferUtil.getGameInfoByConnection(connection)
-        gameInfo.fightBoard.getFighterById(socketResult.informations.contextualId)?.let {
-            gameInfo.fightBoard.move(it, socketResult.informations.disposition.cellId)
-        }
+        val fighter = gameInfo.fightBoard.getOrCreateFighterById(socketResult.informations.contextualId)
+        gameInfo.fightBoard.move(fighter, socketResult.informations.disposition.cellId)
     }
 }

@@ -7,5 +7,6 @@ enum class DofusSpellEffectGlobalType {
     STATE_CHANGE,
     DEBUFF,
     HEAL,
+    SUMMON,
     CUSTOM
 }

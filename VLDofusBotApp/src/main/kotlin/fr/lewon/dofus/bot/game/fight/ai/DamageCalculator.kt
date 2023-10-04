@@ -2,9 +2,8 @@ package fr.lewon.dofus.bot.game.fight.ai
 
 import fr.lewon.dofus.bot.core.model.spell.DofusSpellEffect
 import fr.lewon.dofus.bot.core.model.spell.DofusSpellEffectType
-import fr.lewon.dofus.bot.core.model.spell.DofusSpellTarget
 import fr.lewon.dofus.bot.game.fight.DofusCharacteristics
-import fr.lewon.dofus.bot.game.fight.Fighter
+import fr.lewon.dofus.bot.game.fight.fighter.Fighter
 
 class DamageCalculator {
 
@@ -35,7 +34,7 @@ class DamageCalculator {
         target: Fighter,
         criticalHit: Boolean
     ): DamageRange {
-        if (!effectCanHitTarget(spellEffect.targets, caster, target)) {
+        if (!spellEffect.canHitTarget(caster, target)) {
             return DamageRange(0, 0)
         }
         val elementalDamageInfo = getElementalDamageInfo(spellEffect.effectType)
@@ -44,12 +43,6 @@ class DamageCalculator {
             minDamage = computeDamage(spellEffect.min, caster, target, elementalDamageInfo, criticalHit),
             maxDamage = computeDamage(spellEffect.max, caster, target, elementalDamageInfo, criticalHit),
         )
-    }
-
-    private fun effectCanHitTarget(spellTargets: List<DofusSpellTarget>, caster: Fighter, target: Fighter): Boolean {
-        return spellTargets.any {
-            it.canHitTarget(caster, target)
-        }
     }
 
     private fun computeDamage(
@@ -77,9 +70,9 @@ class DamageCalculator {
         val spellMultiplier = DofusCharacteristics.SPELL_DAMAGE_DONE_PERCENT.getValue(caster, 100)
         val finalDamageMultiplier = DofusCharacteristics.DEALT_DAMAGES_MULTIPLICATOR.getValue(caster, 100)
         val multipliedDamages = (damage.toFloat()
-                * (proximityMultiplier.toFloat() / 100f)
-                * (spellMultiplier.toFloat() / 100f)
-                * (finalDamageMultiplier.toFloat() / 100f)).toInt()
+            * (proximityMultiplier.toFloat() / 100f)
+            * (spellMultiplier.toFloat() / 100f)
+            * (finalDamageMultiplier.toFloat() / 100f)).toInt()
         val enemyResistPercent = elementResistPercent.getValue(target)
         val enemyResist = elementResist.getValue(target)
         val resistProduct = enemyResistPercent.toFloat() / 100f

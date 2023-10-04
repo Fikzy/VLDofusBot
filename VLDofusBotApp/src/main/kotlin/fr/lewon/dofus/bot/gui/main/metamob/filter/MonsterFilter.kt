@@ -4,7 +4,7 @@ import fr.lewon.dofus.bot.scripts.parameters.DofusBotParameter
 import fr.lewon.dofus.bot.scripts.parameters.impl.ChoiceParameter
 import fr.lewon.dofus.bot.scripts.parameters.impl.IntParameter
 import fr.lewon.dofus.bot.scripts.parameters.impl.StringParameter
-import fr.lewon.dofus.bot.util.StringUtil
+import fr.lewon.dofus.bot.util.StringUtil.removeAccents
 import fr.lewon.dofus.bot.util.external.metamob.model.MetamobMonster
 import fr.lewon.dofus.bot.util.external.metamob.model.MetamobMonsterType
 
@@ -16,7 +16,7 @@ val MonsterFilters = listOf(
             defaultValue = "",
         )
     ) { value, monster ->
-        StringUtil.removeAccents(monster.name).lowercase().contains(StringUtil.removeAccents(value).lowercase())
+        monster.name.lowercase().removeAccents().contains(value.lowercase().removeAccents())
     },
     MonsterFilter(
         ChoiceParameter(

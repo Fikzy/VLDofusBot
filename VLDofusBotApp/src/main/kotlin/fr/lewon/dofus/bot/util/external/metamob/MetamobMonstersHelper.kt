@@ -7,7 +7,7 @@ import fr.lewon.dofus.bot.gui.main.metamob.MetamobHelperUIUtil
 import fr.lewon.dofus.bot.sniffer.model.types.game.context.fight.FightResultPlayerListEntry
 import fr.lewon.dofus.bot.sniffer.model.types.game.data.items.ObjectItem
 import fr.lewon.dofus.bot.sniffer.model.types.game.data.items.effects.ObjectEffectDice
-import fr.lewon.dofus.bot.util.StringUtil
+import fr.lewon.dofus.bot.util.StringUtil.removeAccents
 import fr.lewon.dofus.bot.util.external.metamob.model.MetamobMonster
 import fr.lewon.dofus.bot.util.external.metamob.model.MetamobMonsterType
 import fr.lewon.dofus.bot.util.external.metamob.model.MetamobMonsterUpdate
@@ -134,7 +134,7 @@ object MetamobMonstersHelper {
     }
 
     private fun stringEqualsIgnoreCaseAndAccents(str1: String, str2: String): Boolean {
-        return StringUtil.removeAccents(str1).lowercase() == StringUtil.removeAccents(str2).lowercase()
+        return str1.lowercase().removeAccents() == str2.lowercase().removeAccents()
     }
 
     private fun getAllMonsters(): List<MetamobMonster> {

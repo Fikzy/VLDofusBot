@@ -1,8 +1,8 @@
-package fr.lewon.dofus.bot.gui.main.devtools
+package fr.lewon.dofus.bot.gui.main.devtools.d2o
 
 import androidx.compose.foundation.lazy.LazyListState
 
-data class DevToolsUiState(
+data class D2ODevToolsUiState(
     val selectedD2OModule: String? = null,
     val loading: Boolean = false,
     val selectedModuleListState: LazyListState = LazyListState(),

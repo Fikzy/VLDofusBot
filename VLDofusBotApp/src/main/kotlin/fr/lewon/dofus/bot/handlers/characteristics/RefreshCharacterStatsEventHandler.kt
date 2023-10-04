@@ -12,6 +12,7 @@ object RefreshCharacterStatsEventHandler : IEventHandler<RefreshCharacterStatsMe
         val fighterId = socketResult.fighterId
         val characteristics = socketResult.stats.characteristics.characteristics
         gameInfo.fightBoard.updateFighterCharacteristics(fighterId, characteristics)
-        gameInfo.fightBoard.getFighterById(fighterId)?.invisibilityState = socketResult.stats.invisibilityState
+        val fighter = gameInfo.fightBoard.getOrCreateFighterById(fighterId)
+        fighter.invisibilityState = socketResult.stats.invisibilityState
     }
 }

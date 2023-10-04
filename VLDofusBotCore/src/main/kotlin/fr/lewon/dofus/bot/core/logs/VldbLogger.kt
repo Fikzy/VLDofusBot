@@ -1,11 +1,13 @@
 package fr.lewon.dofus.bot.core.logs
 
 import fr.lewon.dofus.bot.core.utils.LockUtils.executeSyncOperation
+import java.awt.Color
 import java.util.concurrent.locks.ReentrantLock
 
 class VldbLogger {
 
     companion object {
+
         const val DEFAULT_LOG_ITEM_CAPACITY = 8
     }
 
@@ -45,9 +47,14 @@ class VldbLogger {
         }
     }
 
-    fun log(message: String, subItemCapacity: Int = DEFAULT_LOG_ITEM_CAPACITY, description: String = ""): LogItem {
+    fun log(
+        message: String,
+        subItemCapacity: Int = DEFAULT_LOG_ITEM_CAPACITY,
+        description: String = "",
+        color: Color? = null
+    ): LogItem {
         return lock.executeSyncOperation {
-            LogItem(null, message, description, subItemCapacity).also { onLogUpdated(it) }
+            LogItem(null, message, description, subItemCapacity, color).also { onLogUpdated(it) }
         }
     }
 

@@ -1,4 +1,4 @@
-package fr.lewon.dofus.bot.game.fight.operations
+package fr.lewon.dofus.bot.game.fight.cooldowns
 
 class GlobalTurnUseSpellStore : HashMap<Double, TurnUseSpellStore>() {
 

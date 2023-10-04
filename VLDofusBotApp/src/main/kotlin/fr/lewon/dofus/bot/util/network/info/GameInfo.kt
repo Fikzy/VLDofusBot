@@ -40,6 +40,7 @@ class GameInfo(val character: DofusCharacter) {
 
     val dofusBoard = DofusBoard()
     val fightBoard = FightBoard(this)
+    var currentSequence = FightSequence(-1, -1000.0).also { it.isFinished = true }
     var spellModifiers: List<SpellModifierMessage> = emptyList()
     var isCreatureModeToggled = false
 

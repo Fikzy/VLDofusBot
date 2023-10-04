@@ -1,6 +1,6 @@
 package fr.lewon.dofus.bot.core.model.spell
 
-enum class DofusSpellEffectType(val globalType: DofusSpellEffectGlobalType, private val id: Int) {
+enum class DofusSpellEffectType(val globalType: DofusSpellEffectGlobalType, val id: Int) {
     SWITCH_POSITIONS(DofusSpellEffectGlobalType.MOVE, 8),
     WATER_LIFE_STEAL(DofusSpellEffectGlobalType.ATTACK, 91),
     EARTH_LIFE_STEAL(DofusSpellEffectGlobalType.ATTACK, 92),
@@ -21,6 +21,9 @@ enum class DofusSpellEffectType(val globalType: DofusSpellEffectGlobalType, priv
     PUSH(DofusSpellEffectGlobalType.MOVE, 5),
     PULL(DofusSpellEffectGlobalType.MOVE, 6),
     DASH(DofusSpellEffectGlobalType.MOVE, 1042),
+    ROLLBACK_PREVIOUS_POSITION(DofusSpellEffectGlobalType.MOVE, 1100),
+    TELESWAP_MIRROR(DofusSpellEffectGlobalType.MOVE, 1104),
+    TELESWAP_MIRROR_CASTER(DofusSpellEffectGlobalType.MOVE, 1105),
     AP_BUFF(DofusSpellEffectGlobalType.BUFF, 111),
     DAMAGE_BUFF(DofusSpellEffectGlobalType.BUFF, 112),
     CRITICAL_BUFF(DofusSpellEffectGlobalType.BUFF, 115),
@@ -32,12 +35,14 @@ enum class DofusSpellEffectType(val globalType: DofusSpellEffectGlobalType, priv
     TACLE_DEBUFF(DofusSpellEffectGlobalType.DEBUFF, 755),
     AP_DEBUFF(DofusSpellEffectGlobalType.DEBUFF, 1079),
     MP_DEBUFF(DofusSpellEffectGlobalType.DEBUFF, 1080),
-    STATE_CHANGE(DofusSpellEffectGlobalType.STATE_CHANGE, 950),
+    ADD_STATE(DofusSpellEffectGlobalType.STATE_CHANGE, 950),
+    REMOVE_STATE(DofusSpellEffectGlobalType.STATE_CHANGE, 951),
     CUSTOM_3(DofusSpellEffectGlobalType.CUSTOM, 1019),
     SIZE_UPGRADE(DofusSpellEffectGlobalType.CUSTOM, 1060),
-    CUSTOM_4(DofusSpellEffectGlobalType.CUSTOM, 1160),
-    CUSTOM(DofusSpellEffectGlobalType.CUSTOM, 2160),
+    CAST_SUB_SPELL_ON_TARGET(DofusSpellEffectGlobalType.CUSTOM, 1160),
+    CAST_SUB_SPELL_ON_CASTER_GLOBAL_LIMITATION(DofusSpellEffectGlobalType.CUSTOM, 2160),
     CUSTOM_2(DofusSpellEffectGlobalType.CUSTOM, 2794),
+    SUMMON_CREATURE(DofusSpellEffectGlobalType.SUMMON, 181),
     ;
 
     companion object {

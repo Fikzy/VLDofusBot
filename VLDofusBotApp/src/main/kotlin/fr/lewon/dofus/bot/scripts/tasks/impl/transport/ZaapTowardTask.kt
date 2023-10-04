@@ -7,7 +7,7 @@ import fr.lewon.dofus.bot.core.ui.managers.TransportSortingUtil
 import fr.lewon.dofus.bot.scripts.tasks.BooleanDofusBotTask
 import fr.lewon.dofus.bot.scripts.tasks.exceptions.DofusBotTaskFatalException
 import fr.lewon.dofus.bot.sniffer.model.messages.game.interactive.zaap.TeleportRequestMessage
-import fr.lewon.dofus.bot.util.StringUtil
+import fr.lewon.dofus.bot.util.StringUtil.removeAccents
 import fr.lewon.dofus.bot.util.game.MoveUtil
 import fr.lewon.dofus.bot.util.game.RetryUtil
 import fr.lewon.dofus.bot.util.geometry.PointRelative
@@ -93,7 +93,7 @@ class ZaapTowardTask(private val zaap: DofusMap) : BooleanDofusBotTask() {
     private fun getOrderedZaapDestinations(zaapDestinations: List<DofusMap>): List<DofusMap> {
         val favoriteZaaps = TransportSortingUtil.getFavoriteZaapMapIds().map { it.toInt() }
         val favoriteIndexFunc: (DofusMap) -> String = { if (favoriteZaaps.contains(it.id.toInt())) "A" else "B" }
-        return zaapDestinations.sortedBy { StringUtil.removeAccents(favoriteIndexFunc(it) + it.subArea.area.name + it.subArea.name) }
+        return zaapDestinations.sortedBy { (favoriteIndexFunc(it) + it.subArea.area.name + it.subArea.name).removeAccents() }
     }
 
     override fun onStarted(): String = "Zapping toward [${zaap.coordinates.x}, ${zaap.coordinates.y}] ..."

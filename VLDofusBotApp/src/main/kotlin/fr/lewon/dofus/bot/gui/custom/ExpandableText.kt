@@ -21,17 +21,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import fr.lewon.dofus.bot.gui.util.AppColors
 
-
 @Composable
 fun ExpandableText(
     text: String,
     modifier: Modifier = Modifier,
     expanded: Boolean,
+    defaultColor: Color = Color.White,
     onExpandButtonClick: () -> Unit,
 ) {
     Column(modifier) {
         Row {
-            val color = if (expanded) AppColors.primaryColor else Color.White
+            val color = if (expanded) AppColors.primaryColor else defaultColor
             Row(Modifier.height(12.dp).align(Alignment.CenterVertically)) {
                 val icon = if (expanded) Icons.Default.Remove else Icons.Default.Add
                 val isHovered = remember { mutableStateOf(false) }

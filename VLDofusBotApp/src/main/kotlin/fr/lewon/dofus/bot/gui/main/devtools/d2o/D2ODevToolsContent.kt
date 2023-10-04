@@ -1,4 +1,4 @@
-package fr.lewon.dofus.bot.gui.main.devtools
+package fr.lewon.dofus.bot.gui.main.devtools.d2o
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -6,7 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun DevToolsContent() {
+fun D2ODevToolsContent() {
     Row(Modifier.fillMaxSize()) {
         Column(Modifier.width(300.dp).fillMaxHeight()) {
             Row(Modifier.fillMaxHeight().weight(1f)) {

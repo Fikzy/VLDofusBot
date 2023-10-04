@@ -9,12 +9,15 @@ import fr.lewon.dofus.bot.sniffer.exceptions.AddToStoreFailedException
 import fr.lewon.dofus.bot.sniffer.exceptions.IncompleteMessageException
 import fr.lewon.dofus.bot.sniffer.exceptions.ParseFailedException
 import fr.lewon.dofus.bot.sniffer.model.messages.NetworkMessage
+import fr.lewon.dofus.bot.sniffer.store.EventStore
 import org.apache.commons.codec.binary.Hex
 import org.pcap4j.packet.TcpPacket
+import java.awt.Color
 
 abstract class MessageParser(private val packetOrigin: PacketOrigin, private val state: MessageParserState) {
 
     companion object {
+
         const val BIT_RIGHT_SHIFT_LEN_PACKET_ID = 2
         const val BIT_MASK = 3
     }
@@ -34,6 +37,8 @@ abstract class MessageParser(private val packetOrigin: PacketOrigin, private val
             }
         } catch (e: IncompleteMessageException) {
             // Nothing
+        } catch (e: AddToStoreFailedException) {
+            e.printStackTrace()
         } catch (e: Exception) {
             if (VldbCoreInitializer.DEBUG && packets.size == 20) {
                 println("${getLogPrefix()} : Couldn't read message - ${e.message} (packets count : ${packets.size})")
@@ -67,7 +72,8 @@ abstract class MessageParser(private val packetOrigin: PacketOrigin, private val
         val premiseStr = "[${packetOrigin.name}] ${messagePremise.eventClass.simpleName}:${messagePremise.eventId}"
         val message = deserializeMessage(messagePremise)
         addMessageToStore(message)
-        state.logger.log(premiseStr, description = objectMapper.writeValueAsString(message))
+        val color = if (EventStore.getHandlers(messagePremise.eventClass).isEmpty()) Color.GRAY else Color.WHITE
+        state.logger.log(premiseStr, description = objectMapper.writeValueAsString(message), color = color)
     }
 
     private fun deserializeMessage(messagePremise: DofusMessagePremise): NetworkMessage {

@@ -1,11 +1,23 @@
 package fr.lewon.dofus.bot.game.fight.ai
 
-import fr.lewon.dofus.bot.core.model.spell.*
+import fr.lewon.dofus.bot.core.d2o.managers.spell.SpellManager
+import fr.lewon.dofus.bot.core.model.spell.DofusSpellEffect
+import fr.lewon.dofus.bot.core.model.spell.DofusSpellEffectType
+import fr.lewon.dofus.bot.core.model.spell.DofusSpellLevel
+import fr.lewon.dofus.bot.core.model.spell.DofusSpellTargetType
 import fr.lewon.dofus.bot.game.DofusBoard
 import fr.lewon.dofus.bot.game.DofusCell
 import fr.lewon.dofus.bot.game.fight.DofusCharacteristics
 import fr.lewon.dofus.bot.game.fight.FightBoard
-import fr.lewon.dofus.bot.game.fight.Fighter
+import fr.lewon.dofus.bot.game.fight.fighter.Fighter
+import fr.lewon.dofus.bot.game.fight.utils.FightSpellAreaUtils
+import fr.lewon.dofus.bot.game.fight.utils.FighterInfoInitializer
+import fr.lewon.dofus.bot.sniffer.model.types.game.context.EntityDispositionInformations
+import fr.lewon.dofus.bot.sniffer.model.types.game.context.fight.GameContextBasicSpawnInformation
+import fr.lewon.dofus.bot.sniffer.model.types.game.context.fight.GameFightCharacteristics
+import fr.lewon.dofus.bot.sniffer.model.types.game.context.fight.GameFightMonsterInformations
+import fr.lewon.dofus.bot.sniffer.model.types.game.look.EntityLook
+import java.util.*
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -14,15 +26,36 @@ import kotlin.math.sign
 class SpellSimulator(val dofusBoard: DofusBoard) {
 
     private val damageCalculator = DamageCalculator()
-    private val effectZoneCalculator = EffectZoneCalculator(dofusBoard)
 
-    fun simulateSpell(fightBoard: FightBoard, caster: Fighter, spell: DofusSpellLevel, targetCellId: Int) {
+    fun simulateSpell(
+        fightBoard: FightBoard,
+        caster: Fighter,
+        spell: DofusSpellLevel,
+        targetCellId: Int,
+        isSubSpell: Boolean = false
+    ) {
+        if (!isSubSpell) {
+            fightBoard.getAllFighters(true).forEach {
+                it.telefraggedThisTurn = false
+            }
+        }
         val criticalChance = spell.criticalHitProbability + DofusCharacteristics.CRITICAL_HIT.getValue(caster)
         val criticalHit = spell.criticalEffects.isNotEmpty() && criticalChance >= 95
         val effects = if (criticalHit) spell.criticalEffects else spell.effects
+        val mainTarget = fightBoard.getFighter(targetCellId)
         effects.forEach {
-            simulateEffect(fightBoard, caster, it, targetCellId, criticalHit)
+            val effectTargetCellId = when {
+                isCasterTarget(it) -> caster.cell.cellId
+                mainTarget != null -> mainTarget.cell.cellId
+                else -> targetCellId
+            }
+            simulateEffect(fightBoard, caster, it, effectTargetCellId, criticalHit)
         }
+    }
+
+    private fun isCasterTarget(effect: DofusSpellEffect): Boolean {
+        val targetTypes = effect.targets.map { it.type }
+        return DofusSpellTargetType.CASTER_1 in targetTypes || DofusSpellTargetType.CASTER_2 in targetTypes
     }
 
     private fun simulateEffect(
@@ -34,14 +67,15 @@ class SpellSimulator(val dofusBoard: DofusBoard) {
     ) {
         val casterCellId = caster.cell.cellId
         val targetCell = dofusBoard.getCell(targetCellId)
-        val zone = effect.rawZone
-        val affectedCells = effectZoneCalculator.getAffectedCells(casterCellId, targetCellId, zone)
-        val fightersInAOE = affectedCells.mapNotNull { fightBoard.getFighter(it) }
-            .filter { effectAffects(effect.targets, caster, it) }
-        val effectZoneType = effect.rawZone.effectZoneType
+        val affectedCellIds =
+            FightSpellAreaUtils.getAffectedCells(dofusBoard, fightBoard, casterCellId, targetCellId, effect.area)
+        val fightersInAOE = affectedCellIds.mapNotNull { fightBoard.getFighter(it) }
+            .filter { effect.canHitTarget(caster, it) }
         when (effect.effectType) {
             DofusSpellEffectType.MP_BUFF ->
                 simulateBuff(fightersInAOE, DofusCharacteristics.MOVEMENT_POINTS, effect.min)
+            DofusSpellEffectType.AP_BUFF ->
+                simulateBuff(fightersInAOE, DofusCharacteristics.ACTION_POINTS, effect.min)
             DofusSpellEffectType.CRITICAL_BUFF ->
                 simulateBuff(fightersInAOE, DofusCharacteristics.CRITICAL_HIT, effect.min)
             DofusSpellEffectType.DAMAGE_BUFF ->
@@ -53,11 +87,17 @@ class SpellSimulator(val dofusBoard: DofusBoard) {
             DofusSpellEffectType.TELEPORT ->
                 simulateTeleport(fightBoard, caster, targetCellId)
             DofusSpellEffectType.PUSH ->
-                simulatePush(fightBoard, effectZoneType, caster, targetCellId, fightersInAOE, effect.min)
+                simulatePush(fightBoard, caster, targetCellId, fightersInAOE, effect.min)
             DofusSpellEffectType.PULL ->
-                simulatePull(fightBoard, effectZoneType, casterCellId, targetCellId, fightersInAOE, effect.min)
+                simulatePull(fightBoard, casterCellId, targetCellId, fightersInAOE, effect.min)
             DofusSpellEffectType.SWITCH_POSITIONS ->
                 simulateSwitchPositions(fightBoard, caster, targetCellId)
+            DofusSpellEffectType.ROLLBACK_PREVIOUS_POSITION ->
+                simulateRollbackPreviousPosition(fightBoard, fightersInAOE)
+            DofusSpellEffectType.TELESWAP_MIRROR ->
+                simulateTeleswapMirror(fightBoard, caster, targetCellId)
+            DofusSpellEffectType.TELESWAP_MIRROR_CASTER ->
+                simulateTeleswapMirrorCaster(fightBoard, caster, fightersInAOE)
             DofusSpellEffectType.AIR_DAMAGE, DofusSpellEffectType.EARTH_DAMAGE, DofusSpellEffectType.FIRE_DAMAGE, DofusSpellEffectType.NEUTRAL_DAMAGE, DofusSpellEffectType.WATER_DAMAGE ->
                 simulateDamages(caster, targetCell, fightersInAOE, effect, criticalHit)
             DofusSpellEffectType.MP_DECREASED_EARTH_DAMAGE ->
@@ -68,13 +108,84 @@ class SpellSimulator(val dofusBoard: DofusBoard) {
                 simulateWorstElementDamages(caster, targetCell, fightersInAOE, effect, criticalHit)
             DofusSpellEffectType.AIR_LIFE_STEAL, DofusSpellEffectType.EARTH_LIFE_STEAL, DofusSpellEffectType.FIRE_LIFE_STEAL, DofusSpellEffectType.NEUTRAL_LIFE_STEAL, DofusSpellEffectType.WATER_LIFE_STEAL ->
                 simulateLifeSteal(caster, targetCell, fightersInAOE, effect, criticalHit)
+            DofusSpellEffectType.CAST_SUB_SPELL_ON_TARGET ->
+                simulateSubSpell(fightBoard, caster, fightersInAOE, effect)
+            DofusSpellEffectType.CAST_SUB_SPELL_ON_CASTER_GLOBAL_LIMITATION ->
+                simulateSubSpell(fightBoard, caster, fightersInAOE, effect)
+            DofusSpellEffectType.ADD_STATE ->
+                simulateAddState(fightersInAOE, effect)
+            DofusSpellEffectType.REMOVE_STATE ->
+                simulateRemoveState(fightersInAOE, effect)
+            DofusSpellEffectType.SUMMON_CREATURE ->
+                simulateSummonCreature(fightBoard, caster, targetCell, effect)
             else -> Unit
         }
     }
 
-    private fun effectAffects(spellTargets: List<DofusSpellTarget>, caster: Fighter, target: Fighter): Boolean {
-        return spellTargets.any {
-            it.canHitTarget(caster, target)
+    private fun simulateSummonCreature(
+        fightBoard: FightBoard,
+        caster: Fighter,
+        targetCell: DofusCell,
+        effect: DofusSpellEffect
+    ) {
+        val fighterInfo = GameFightMonsterInformations().also { monsterInfo ->
+            val genericId = effect.min
+            val level = 1
+            val disposition = EntityDispositionInformations().also {
+                it.cellId = targetCell.cellId
+            }
+            val summonInfo = GameContextBasicSpawnInformation().also {
+                it.teamId = caster.teamId
+            }
+            val stats = GameFightCharacteristics().also {
+                it.summoner = caster.id
+                it.summoned = true
+            }
+            FighterInfoInitializer.initGameFightMonsterInformations(
+                fighterInformation = monsterInfo,
+                contextualId = Math.random() * 1_000_000,
+                disposition = disposition,
+                look = EntityLook(),
+                spawnInfo = summonInfo,
+                wave = 0,
+                stats = stats,
+                previousPositions = ArrayList(),
+                creatureGenericId = genericId,
+                creatureGrade = 0,
+                creatureLevel = level
+            )
+        }
+        val summonFighter = fightBoard.createOrUpdateFighter(fighterInfo)
+        summonFighter.maxHp = 1
+        summonFighter.baseHp = 1
+    }
+
+    private fun simulateRemoveState(fightersInAOE: List<Fighter>, effect: DofusSpellEffect) {
+        for (fighter in fightersInAOE) {
+            val toRemoveKeys = fighter.stateBuffs.filter { it.value.stateId == effect.value }.map { it.key }
+            for (toRemoveKey in toRemoveKeys) {
+                fighter.stateBuffs.remove(toRemoveKey)
+            }
+        }
+    }
+
+    private fun simulateAddState(fightersInAOE: List<Fighter>, effect: DofusSpellEffect) {
+        for (fighter in fightersInAOE) {
+            fighter.addStateBuff(UUID.randomUUID().toString(), 1, effect.value)
+        }
+    }
+
+    private fun simulateSubSpell(
+        fightBoard: FightBoard,
+        caster: Fighter,
+        affectedFighters: List<Fighter>,
+        effect: DofusSpellEffect,
+    ) {
+        val subSpellLevel = SpellManager.getSpell(effect.min)?.levels?.get(effect.max - 1)
+        if (subSpellLevel != null) {
+            for (fighter in affectedFighters) {
+                this.simulateSpell(fightBoard, caster, subSpellLevel, fighter.cell.cellId, true)
+            }
         }
     }
 
@@ -196,20 +307,76 @@ class SpellSimulator(val dofusBoard: DofusBoard) {
         fightBoard.move(target, oldCasterCellId)
     }
 
+    private fun simulateRollbackPreviousPosition(fightBoard: FightBoard, fightersInAOE: List<Fighter>) {
+        for (fighter in fightersInAOE.filter { it.previousCellIds.isNotEmpty() }) {
+            val newPosition = fighter.previousCellIds.lastOrNull()
+            if (newPosition != null) {
+                val fighterOnNewCell = fightBoard.getFighter(newPosition)
+                if (fighterOnNewCell != null && fighterOnNewCell != fighter) {
+                    fightBoard.move(fighterOnNewCell, fighter.cell)
+                    fighterOnNewCell.telefraggedThisTurn = true
+                    fighter.telefraggedThisTurn = true
+                }
+                fightBoard.move(fighter, newPosition, true)
+            }
+        }
+    }
+
+    private fun simulateTeleswapMirror(
+        fightBoard: FightBoard,
+        caster: Fighter,
+        targetCellId: Int
+    ) {
+        val targetCell = dofusBoard.getCell(targetCellId)
+        val dRow = targetCell.row - caster.cell.row
+        val dCol = targetCell.col - caster.cell.col
+        dofusBoard.getCell(targetCell.col + dCol, targetCell.row + dRow)?.let { newCasterCell ->
+            if (newCasterCell.isAccessible()) {
+                val fighterOnNewCell = fightBoard.getFighter(newCasterCell)
+                if (fighterOnNewCell != null) {
+                    fightBoard.move(fighterOnNewCell, caster.cell)
+                    fighterOnNewCell.telefraggedThisTurn = true
+                }
+                fightBoard.move(caster, newCasterCell)
+            }
+        }
+    }
+
+    private fun simulateTeleswapMirrorCaster(
+        fightBoard: FightBoard,
+        caster: Fighter,
+        fightersInAOE: List<Fighter>
+    ) {
+        for (fighter in fightersInAOE) {
+            val dRow = fighter.cell.row - caster.cell.row
+            val dCol = fighter.cell.col - caster.cell.col
+            dofusBoard.getCell(caster.cell.col - dCol, caster.cell.row - dRow)?.let { newTargetCell ->
+                if (newTargetCell.isAccessible()) {
+                    val fighterOnNewCell = fightBoard.getFighter(newTargetCell)
+                    if (fighterOnNewCell != null) {
+                        fightBoard.move(fighterOnNewCell, fighter.cell)
+                        fighterOnNewCell.telefraggedThisTurn = true
+                        fighter.telefraggedThisTurn = true
+                    }
+                    fightBoard.move(fighter, newTargetCell)
+                }
+            }
+        }
+    }
+
     private fun simulateTeleport(fightBoard: FightBoard, caster: Fighter, targetCellId: Int) {
         fightBoard.move(caster.id, targetCellId)
     }
 
     private fun simulatePull(
         fightBoard: FightBoard,
-        effectZoneType: DofusEffectZoneType,
         casterCellId: Int,
         targetCellId: Int,
         fightersInAOE: List<Fighter>,
         amount: Int
     ) {
         for (fighter in fightersInAOE) {
-            val pullTowardCellId = getPushOriginCellId(casterCellId, targetCellId, fighter.cell.cellId, effectZoneType)
+            val pullTowardCellId = getPushOriginCellId(casterCellId, targetCellId, fighter.cell.cellId)
             val pullTowardCell = dofusBoard.getCell(pullTowardCellId)
             val pullDest = getRealDashDest(fightBoard, amount, fighter.cell, pullTowardCell)
             fightBoard.move(fighter, pullDest)
@@ -218,16 +385,13 @@ class SpellSimulator(val dofusBoard: DofusBoard) {
 
     private fun simulatePush(
         fightBoard: FightBoard,
-        effectZoneType: DofusEffectZoneType,
         caster: Fighter,
         targetCellId: Int,
         fightersInAOE: List<Fighter>,
         amount: Int
     ) {
         for (fighter in fightersInAOE) {
-            val pushFromCellId = getPushOriginCellId(
-                caster.cell.cellId, targetCellId, fighter.cell.cellId, effectZoneType
-            )
+            val pushFromCellId = getPushOriginCellId(caster.cell.cellId, targetCellId, fighter.cell.cellId)
             val pushFromCell = dofusBoard.getCell(pushFromCellId)
             val pushDest = getRealDashDest(fightBoard, amount, fighter.cell, pushFromCell, true)
             val oldLoc = fighter.cell.cellId
@@ -248,9 +412,8 @@ class SpellSimulator(val dofusBoard: DofusBoard) {
         casterCellId: Int,
         spellTargetCellId: Int,
         hitFighterCellId: Int,
-        effectZoneType: DofusEffectZoneType
     ): Int {
-        return if (effectZoneType != DofusEffectZoneType.CROSS_FROM_TARGET && spellTargetCellId == hitFighterCellId) {
+        return if (spellTargetCellId == hitFighterCellId) {
             casterCellId
         } else {
             spellTargetCellId

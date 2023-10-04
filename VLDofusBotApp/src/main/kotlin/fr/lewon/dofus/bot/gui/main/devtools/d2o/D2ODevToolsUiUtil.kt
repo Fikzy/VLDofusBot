@@ -1,4 +1,4 @@
-package fr.lewon.dofus.bot.gui.main.devtools
+package fr.lewon.dofus.bot.gui.main.devtools.d2o
 
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.mutableStateOf
@@ -7,9 +7,9 @@ import fr.lewon.dofus.bot.core.d2o.D2OUtil
 import fr.lewon.dofus.bot.core.i18n.I18NUtil
 import fr.lewon.dofus.bot.gui.ComposeUIUtil
 
-object DevToolsUiUtil : ComposeUIUtil() {
+object D2ODevToolsUiUtil : ComposeUIUtil() {
 
-    private val uiState = mutableStateOf(DevToolsUiState())
+    private val uiState = mutableStateOf(D2ODevToolsUiState())
 
     fun getUiStateValue() = uiState.value
 

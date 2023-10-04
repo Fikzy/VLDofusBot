@@ -9,10 +9,9 @@ object GameActionFightLifePointsLostEventHandler : IEventHandler<GameActionFight
 
     override fun onEventReceived(socketResult: GameActionFightLifePointsLostMessage, connection: DofusConnection) {
         val gameInfo = GameSnifferUtil.getGameInfoByConnection(connection)
-        gameInfo.fightBoard.getFighterById(socketResult.targetId)?.let {
-            it.hpLost += socketResult.loss
-            it.maxHp -= socketResult.permanentDamages
-        }
+        val fighter = gameInfo.fightBoard.getOrCreateFighterById(socketResult.targetId)
+        fighter.hpLost += socketResult.loss
+        fighter.maxHp -= socketResult.permanentDamages
     }
 
 }

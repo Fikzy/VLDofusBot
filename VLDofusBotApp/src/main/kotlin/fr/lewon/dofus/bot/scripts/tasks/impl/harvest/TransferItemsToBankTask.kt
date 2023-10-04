@@ -4,6 +4,7 @@ import fr.lewon.dofus.bot.core.d2o.managers.map.MapManager
 import fr.lewon.dofus.bot.core.logs.LogItem
 import fr.lewon.dofus.bot.core.ui.managers.DofusUIElement
 import fr.lewon.dofus.bot.scripts.tasks.BooleanDofusBotTask
+import fr.lewon.dofus.bot.scripts.tasks.impl.inventory.UseItemsInInventoryTask
 import fr.lewon.dofus.bot.scripts.tasks.impl.npc.NpcSpeakTask
 import fr.lewon.dofus.bot.scripts.tasks.impl.transport.ReachMapTask
 import fr.lewon.dofus.bot.sniffer.model.messages.game.inventory.storage.StorageObjectsUpdateMessage
@@ -24,6 +25,9 @@ class TransferItemsToBankTask : BooleanDofusBotTask() {
         val initialPosition = gameInfo.currentMap
         if (!ReachMapTask(destMaps = listOf(bankMap), harvestEnabled = false).run(logItem, gameInfo)) {
             error("Failed to reach bank")
+        }
+        if (!UseItemsInInventoryTask("sac d").run(logItem, gameInfo)) {
+            error("Couldn't use resources bags")
         }
         if (!NpcSpeakTask(bankerNpcId, listOf(-1)).run(logItem, gameInfo)) {
             error("Couldn't talk to banker")

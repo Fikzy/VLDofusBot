@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.lewon.dofus.bot.gui.custom.*
 import fr.lewon.dofus.bot.gui.util.AppColors
-import fr.lewon.dofus.bot.util.StringUtil
+import fr.lewon.dofus.bot.util.StringUtil.removeAccents
 import fr.lewon.dofus.bot.util.filemanagers.impl.TreasureHintManager
 
 @Composable
@@ -115,7 +115,7 @@ fun HintsScrollableBox(
         val state = rememberScrollState()
         Column(Modifier.fillMaxSize().verticalScroll(state).padding(end = 10.dp)) {
             gfxIdsByPoiLabel.entries.filter {
-                StringUtil.removeAccents(it.key).contains(StringUtil.removeAccents(labelFilter))
+                it.key.removeAccents().contains(labelFilter.removeAccents())
             }.sortedBy { it.key }.forEach { (hintName, gfxIds) ->
                 HintsList(hintName, gfxIds, gfxCardOverlayContent)
             }

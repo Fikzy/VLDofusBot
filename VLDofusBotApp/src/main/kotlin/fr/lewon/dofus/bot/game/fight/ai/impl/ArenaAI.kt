@@ -5,9 +5,9 @@ import fr.lewon.dofus.bot.core.model.spell.DofusSpellLevel
 import fr.lewon.dofus.bot.game.DofusBoard
 import fr.lewon.dofus.bot.game.DofusCell
 import fr.lewon.dofus.bot.game.fight.FightBoard
-import fr.lewon.dofus.bot.game.fight.Fighter
 import fr.lewon.dofus.bot.game.fight.ai.FightAI
 import fr.lewon.dofus.bot.game.fight.ai.complements.AIComplement
+import fr.lewon.dofus.bot.game.fight.fighter.Fighter
 
 abstract class ArenaAI(dofusBoard: DofusBoard, aiComplement: AIComplement) : FightAI(dofusBoard, aiComplement) {
 

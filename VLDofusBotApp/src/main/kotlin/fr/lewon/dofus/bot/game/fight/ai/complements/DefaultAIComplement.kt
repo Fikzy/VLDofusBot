@@ -2,8 +2,8 @@ package fr.lewon.dofus.bot.game.fight.ai.complements
 
 import fr.lewon.dofus.bot.game.DofusBoard
 import fr.lewon.dofus.bot.game.fight.FightBoard
-import fr.lewon.dofus.bot.game.fight.Fighter
 import fr.lewon.dofus.bot.game.fight.ai.DangerMap
+import fr.lewon.dofus.bot.game.fight.fighter.Fighter
 
 class DefaultAIComplement(
     private val canAttack: Boolean = true,

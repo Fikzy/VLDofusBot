@@ -7,10 +7,9 @@ import fr.lewon.dofus.bot.game.fight.ai.FightAI
 import fr.lewon.dofus.bot.game.fight.ai.FightState
 import fr.lewon.dofus.bot.game.fight.ai.complements.AIComplement
 import fr.lewon.dofus.bot.game.fight.operations.FightOperation
-import fr.lewon.dofus.bot.game.fight.operations.FightOperationType
+import fr.lewon.dofus.bot.game.fight.operations.PassTurnOperation
 import kotlin.math.abs
 import kotlin.random.Random
-
 
 open class DefaultFightAI(dofusBoard: DofusBoard, aiComplement: AIComplement) : FightAI(dofusBoard, aiComplement) {
 
@@ -35,7 +34,8 @@ open class DefaultFightAI(dofusBoard: DofusBoard, aiComplement: AIComplement) : 
         val frontier = mutableListOf(initialNode)
         val startTime = System.currentTimeMillis()
 
-        while (frontier.isNotEmpty() && System.currentTimeMillis() - startTime < 1500) {
+        val maxTimeMillis = 1800
+        while (frontier.isNotEmpty() && System.currentTimeMillis() - startTime < maxTimeMillis) {
             val nodesToExplore = if (frontier.size < 100) {
                 frontier.toList()
             } else {
@@ -43,14 +43,14 @@ open class DefaultFightAI(dofusBoard: DofusBoard, aiComplement: AIComplement) : 
             }
             for (node in nodesToExplore) {
                 frontier.remove(node)
-                if (System.currentTimeMillis() - startTime > 1500) {
+                if (System.currentTimeMillis() - startTime > maxTimeMillis) {
                     return selectOperation(bestNode)
                 }
                 for (move in node.state.getPossibleOperations()) {
                     val childState = node.state.deepCopy()
                     childState.makeMove(move)
                     val operations = ArrayList(node.operations).also { it.add(move) }
-                    val isPassTurn = move.type == FightOperationType.PASS_TURN
+                    val isPassTurn = move == PassTurnOperation
                     val childNodeScore = if (isPassTurn) node.score else childState.evaluate()
                     val childNode = Node(childState, operations, childNodeScore)
                     if (!isPassTurn) {
@@ -58,7 +58,7 @@ open class DefaultFightAI(dofusBoard: DofusBoard, aiComplement: AIComplement) : 
                     }
                     if (bestNode.score < childNodeScore) {
                         bestNode = childNode
-                        if (bestNode.score == Int.MAX_VALUE.toDouble()) {
+                        if (System.currentTimeMillis() - startTime > maxTimeMillis / 2 && bestNode.score >= Int.MAX_VALUE.toDouble()) {
                             return selectOperation(bestNode)
                         }
                     }
@@ -69,7 +69,7 @@ open class DefaultFightAI(dofusBoard: DofusBoard, aiComplement: AIComplement) : 
     }
 
     private fun selectOperation(node: Node): FightOperation {
-        return node.operations.firstOrNull() ?: FightOperation(FightOperationType.PASS_TURN)
+        return node.operations.firstOrNull() ?: PassTurnOperation
     }
 
     private fun selectNodesToExplore(frontierNodes: List<Node>, newPopulationSize: Int): List<Node> {

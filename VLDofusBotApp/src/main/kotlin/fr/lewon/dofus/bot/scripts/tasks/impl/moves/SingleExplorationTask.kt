@@ -15,6 +15,7 @@ import fr.lewon.dofus.bot.scripts.tasks.impl.moves.util.ExplorationParameters
 import fr.lewon.dofus.bot.scripts.tasks.impl.transport.LeaveHavenBagTask
 import fr.lewon.dofus.bot.scripts.tasks.impl.transport.ReachMapTask
 import fr.lewon.dofus.bot.sniffer.model.types.game.context.roleplay.GameRolePlayGroupMonsterInformations
+import fr.lewon.dofus.bot.util.StringUtil.removeAccents
 import fr.lewon.dofus.bot.util.filemanagers.impl.ExplorationRecordManager
 import fr.lewon.dofus.bot.util.game.TravelUtil
 import fr.lewon.dofus.bot.util.network.info.GameInfo
@@ -169,7 +170,6 @@ abstract class SingleExplorationTask<T>(
     private fun killMonsters(logItem: LogItem, gameInfo: GameInfo) {
         while (gameInfo.monsterInfoByEntityId.isNotEmpty()) {
             if (!FightAnyMonsterGroupTask(
-                    stopIfNoMonsterPresent = true,
                     maxMonsterGroupLevel = explorationParameters.maxMonsterGroupLevel,
                     maxMonsterGroupSize = explorationParameters.maxMonsterGroupSize
                 ).run(logItem, gameInfo)
@@ -201,7 +201,7 @@ abstract class SingleExplorationTask<T>(
 
     private fun isSearchedMonster(monsterInfo: GameRolePlayGroupMonsterInformations): Boolean =
         isAnyMonsterMatchingPredicate(monsterInfo) {
-            it.name.lowercase() == explorationParameters.searchedMonsterName.lowercase()
+            it.name.lowercase().removeAccents() == explorationParameters.searchedMonsterName.lowercase().removeAccents()
         }
 
     private fun isArchMonster(monsterInfo: GameRolePlayGroupMonsterInformations): Boolean =

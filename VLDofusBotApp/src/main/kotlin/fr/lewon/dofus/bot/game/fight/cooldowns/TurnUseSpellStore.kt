@@ -1,4 +1,4 @@
-package fr.lewon.dofus.bot.game.fight.operations
+package fr.lewon.dofus.bot.game.fight.cooldowns
 
 import fr.lewon.dofus.bot.core.model.spell.DofusSpellLevel
 

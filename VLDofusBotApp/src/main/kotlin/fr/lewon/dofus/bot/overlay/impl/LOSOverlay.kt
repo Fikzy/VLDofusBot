@@ -81,7 +81,9 @@ object LOSOverlay : AbstractMapOverlay() {
                     "Agility : ${DofusCharacteristics.AGILITY.getValue(fighter)}",
                     "Intelligence : ${DofusCharacteristics.INTELLIGENCE.getValue(fighter)}",
                     "Chance : ${DofusCharacteristics.CHANCE.getValue(fighter)}",
-                    "Power : ${DofusCharacteristics.DAMAGES_BONUS_PERCENT.getValue(fighter)}"
+                    "Power : ${DofusCharacteristics.DAMAGES_BONUS_PERCENT.getValue(fighter)}",
+                    "States : ${fighter.stateBuffs.values.joinToString(", ") { it.stateId.toString() }}",
+                    "Previous Cells size : ${fighter.previousCellIds.size}"
                 ).map { OverlayTextLine(it, 14) }
             }
         }

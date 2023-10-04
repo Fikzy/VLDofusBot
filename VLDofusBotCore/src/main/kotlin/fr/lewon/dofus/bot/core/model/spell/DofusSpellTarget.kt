@@ -6,6 +6,7 @@ import fr.lewon.dofus.bot.core.fighter.IDofusFighter
 data class DofusSpellTarget(val type: DofusSpellTargetType, val id: Int?, val casterOverwriteTarget: Boolean) {
 
     companion object {
+
         fun fromString(targetMask: String): List<DofusSpellTarget> {
             val targets = ArrayList<DofusSpellTarget>()
             for (subMask in targetMask.split(",")) {
@@ -25,8 +26,8 @@ data class DofusSpellTarget(val type: DofusSpellTargetType, val id: Int?, val ca
         }
     }
 
-    fun canHitTarget(caster: IDofusFighter, target: IDofusFighter): Boolean {
+    fun isTargetValid(caster: IDofusFighter, target: IDofusFighter): Boolean {
         val realTarget = if (casterOverwriteTarget) caster else target
-        return type.canHitTarget(id, caster, realTarget)
+        return type.isTargetValid(id, caster, realTarget)
     }
 }

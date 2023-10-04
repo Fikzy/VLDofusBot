@@ -1,26 +1,31 @@
-package fr.lewon.dofus.bot.game.fight.ai
+package fr.lewon.dofus.bot.game.fight.utils
 
-import fr.lewon.dofus.bot.core.model.spell.DofusEffectZone
-import fr.lewon.dofus.bot.core.model.spell.DofusEffectZoneType
+import fr.lewon.dofus.bot.core.model.spell.DofusEffectArea
+import fr.lewon.dofus.bot.core.model.spell.DofusEffectAreaType
 import fr.lewon.dofus.bot.game.DofusBoard
 import fr.lewon.dofus.bot.game.DofusCell
+import fr.lewon.dofus.bot.game.fight.FightBoard
 import kotlin.math.abs
 import kotlin.math.sign
 
-class EffectZoneCalculator(private val dofusBoard: DofusBoard) {
+object FightSpellAreaUtils {
 
     fun getAffectedCells(
+        dofusBoard: DofusBoard,
+        fightBoard: FightBoard,
         fromCellId: Int,
         targetCellId: Int,
-        effectZones: List<DofusEffectZone>,
+        effectZones: List<DofusEffectArea>,
     ): List<Int> {
-        return effectZones.flatMap { getAffectedCells(fromCellId, targetCellId, it) }
+        return effectZones.flatMap { getAffectedCells(dofusBoard, fightBoard, fromCellId, targetCellId, it) }
     }
 
     fun getAffectedCells(
+        dofusBoard: DofusBoard,
+        fightBoard: FightBoard,
         fromCellId: Int,
         targetCellId: Int,
-        effectZone: DofusEffectZone,
+        effectZone: DofusEffectArea,
     ): List<Int> {
         val areaSize = effectZone.size
         val fromCell = dofusBoard.getCell(fromCellId)
@@ -28,9 +33,10 @@ class EffectZoneCalculator(private val dofusBoard: DofusBoard) {
         val row = targetCell.row
         val col = targetCell.col
         val cells = ArrayList<DofusCell>()
-        when (effectZone.effectZoneType) {
-            DofusEffectZoneType.POINT -> cells.add(targetCell)
-            DofusEffectZoneType.CIRCLE -> {
+        when (effectZone.effectAreaType) {
+            DofusEffectAreaType.ALL -> cells.addAll(fightBoard.getAllFighters(true).map { it.cell })
+            DofusEffectAreaType.POINT -> cells.add(targetCell)
+            DofusEffectAreaType.CIRCLE -> {
                 for (c in col - areaSize..col + areaSize) {
                     for (r in row - areaSize..row + areaSize) {
                         if (abs(c - col) + abs(r - row) <= areaSize) {
@@ -39,14 +45,22 @@ class EffectZoneCalculator(private val dofusBoard: DofusBoard) {
                     }
                 }
             }
-            DofusEffectZoneType.SQUARE -> {
+            DofusEffectAreaType.SQUARE -> {
                 for (c in col - areaSize..col + areaSize) {
                     for (r in row - areaSize..row + areaSize) {
                         dofusBoard.getCell(c, r)?.let { cells.add(it) }
                     }
                 }
             }
-            DofusEffectZoneType.CROSS, DofusEffectZoneType.CROSS_FROM_TARGET -> {
+            DofusEffectAreaType.CROSS_WITHOUT_CENTER -> {
+                for (i in 1..areaSize) {
+                    dofusBoard.getCell(col, row - i)?.let { cells.add(it) }
+                    dofusBoard.getCell(col, row + i)?.let { cells.add(it) }
+                    dofusBoard.getCell(col - i, row)?.let { cells.add(it) }
+                    dofusBoard.getCell(col + i, row)?.let { cells.add(it) }
+                }
+            }
+            DofusEffectAreaType.CROSS -> {
                 for (i in 0..areaSize) {
                     dofusBoard.getCell(col, row - i)?.let { cells.add(it) }
                     dofusBoard.getCell(col, row + i)?.let { cells.add(it) }
@@ -54,7 +68,7 @@ class EffectZoneCalculator(private val dofusBoard: DofusBoard) {
                     dofusBoard.getCell(col + i, row)?.let { cells.add(it) }
                 }
             }
-            DofusEffectZoneType.DIAGONAL_CROSS -> {
+            DofusEffectAreaType.DIAGONAL_CROSS -> {
                 for (i in 0..areaSize) {
                     dofusBoard.getCell(col - i, row - i)?.let { cells.add(it) }
                     dofusBoard.getCell(col - i, row + i)?.let { cells.add(it) }
@@ -62,7 +76,7 @@ class EffectZoneCalculator(private val dofusBoard: DofusBoard) {
                     dofusBoard.getCell(col + i, row + i)?.let { cells.add(it) }
                 }
             }
-            DofusEffectZoneType.LINE -> {
+            DofusEffectAreaType.LINE -> {
                 if (fromCellId == targetCellId) {
                     return emptyList()
                 }
@@ -81,7 +95,7 @@ class EffectZoneCalculator(private val dofusBoard: DofusBoard) {
                     cell?.let { cells.add(it) } ?: break
                 }
             }
-            DofusEffectZoneType.PERPENDICULAR_LINE -> {
+            DofusEffectAreaType.PERPENDICULAR_LINE -> {
                 if (fromCellId == targetCellId) {
                     return emptyList()
                 }
@@ -104,7 +118,7 @@ class EffectZoneCalculator(private val dofusBoard: DofusBoard) {
                     }
                 }
             }
-            DofusEffectZoneType.CONE -> {
+            DofusEffectAreaType.CONE -> {
                 if (fromCellId == targetCellId) {
                     return emptyList()
                 }

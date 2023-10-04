@@ -1,4 +1,4 @@
-package fr.lewon.dofus.bot.gui.main.devtools
+package fr.lewon.dofus.bot.gui.main.devtools.d2o
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -18,11 +18,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.lewon.dofus.bot.gui.custom.*
-import fr.lewon.dofus.bot.util.StringUtil
+import fr.lewon.dofus.bot.util.StringUtil.removeAccents
 
 @Composable
 fun D2OSelectedModuleContent() {
-    val uiState = DevToolsUiUtil.getUiStateValue()
+    val uiState = D2ODevToolsUiUtil.getUiStateValue()
     Column(modifier = Modifier.fillMaxSize().padding(5.dp).grayBoxStyle().padding(5.dp)) {
         HeaderLine(uiState)
         if (uiState.selectedD2OModule != null) {
@@ -32,8 +32,8 @@ fun D2OSelectedModuleContent() {
                 val items = uiState.selectedModuleItems.filter {
                     val name = it.name
                     val id = it.id
-                    (name == null || StringUtil.removeAccents(name)
-                        .contains(StringUtil.removeAccents(uiState.moduleItemNameFilter))) &&
+                    (name == null || name.removeAccents()
+                        .contains(uiState.moduleItemNameFilter.removeAccents())) &&
                         (id == null || uiState.moduleItemIdFilter == 0 || id == uiState.moduleItemIdFilter.toLong())
                 }
                 val expandedItems = remember(uiState.selectedD2OModule) { mutableStateOf(emptyList<ModuleItem>()) }
@@ -72,7 +72,7 @@ fun D2OSelectedModuleContent() {
 }
 
 @Composable
-private fun HeaderLine(uiState: DevToolsUiState) {
+private fun HeaderLine(uiState: D2ODevToolsUiState) {
     Row(Modifier.fillMaxWidth().height(30.dp)) {
         CommonText(
             "Selected module : ${uiState.selectedD2OModule ?: "/"}",
@@ -83,7 +83,7 @@ private fun HeaderLine(uiState: DevToolsUiState) {
 }
 
 @Composable
-private fun FilterLine(uiState: DevToolsUiState) {
+private fun FilterLine(uiState: D2ODevToolsUiState) {
     Column(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
         Row {
             CommonText(
@@ -92,7 +92,7 @@ private fun FilterLine(uiState: DevToolsUiState) {
             )
             IntegerTextField(
                 value = uiState.moduleItemIdFilter.toString(),
-                onUpdate = { DevToolsUiUtil.updateModuleItemIdFilter(it.toIntOrNull() ?: 0) },
+                onUpdate = { D2ODevToolsUiUtil.updateModuleItemIdFilter(it.toIntOrNull() ?: 0) },
                 modifier = Modifier.padding(4.dp).align(Alignment.CenterVertically).width(150.dp),
             )
         }
@@ -103,7 +103,7 @@ private fun FilterLine(uiState: DevToolsUiState) {
             )
             SimpleTextField(
                 text = uiState.moduleItemNameFilter,
-                onValueChange = { DevToolsUiUtil.updateModuleItemNameFilter(it) },
+                onValueChange = { D2ODevToolsUiUtil.updateModuleItemNameFilter(it) },
                 modifier = Modifier.padding(4.dp).align(Alignment.CenterVertically).width(150.dp),
             )
         }

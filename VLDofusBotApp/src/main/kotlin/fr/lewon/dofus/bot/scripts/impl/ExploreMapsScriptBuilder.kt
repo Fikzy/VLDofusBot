@@ -14,7 +14,7 @@ import fr.lewon.dofus.bot.scripts.tasks.impl.moves.path.ExploreSubPathsTask
 import fr.lewon.dofus.bot.scripts.tasks.impl.moves.subarea.ExploreSubAreaTask
 import fr.lewon.dofus.bot.scripts.tasks.impl.moves.subarea.ExploreSubAreasTask
 import fr.lewon.dofus.bot.scripts.tasks.impl.moves.util.ExplorationParameters
-import fr.lewon.dofus.bot.util.StringUtil
+import fr.lewon.dofus.bot.util.StringUtil.removeAccents
 import fr.lewon.dofus.bot.util.filemanagers.impl.MapsPathsManager
 import fr.lewon.dofus.bot.util.network.info.GameInfo
 
@@ -57,7 +57,7 @@ object ExploreMapsScriptBuilder : DofusBotScriptBuilder("Explore maps") {
         "Sub areas to explore",
         listOf(SUB_AREA_BY_LABEL.values.first()),
         getAvailableValues = {
-            SUB_AREA_BY_LABEL.entries.sortedBy { StringUtil.removeAccents(it.key) }.map { it.value }
+            SUB_AREA_BY_LABEL.entries.sortedBy { it.key.removeAccents() }.map { it.value }
         },
         displayCondition = {
             !it.getParamValue(currentAreaParameter) && it.getParamValue(explorationTypeParameter) == ExplorationType.SubArea

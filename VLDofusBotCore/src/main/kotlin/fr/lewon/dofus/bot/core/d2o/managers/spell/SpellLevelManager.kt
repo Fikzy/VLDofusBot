@@ -86,10 +86,15 @@ object SpellLevelManager : VldbManager {
 
     private fun parseEffect(effectMap: Map<String, Any>): DofusSpellEffect? {
         val effectId = effectMap["effectId"].toString().toInt()
+        val forClientOnly = effectMap["forClientOnly"].toString().toBoolean()
+        if (forClientOnly) {
+            return null
+        }
         val spellEffectType = DofusSpellEffectType.fromEffectId(effectId)
             ?: if (VldbCoreInitializer.DEBUG) effectIdError(effectId) else return null
-        val rawZone = parseEffectZone(effectMap["rawZone"].toString())
-            ?: if (VldbCoreInitializer.DEBUG) error("Failed parse raw zone : ${effectMap["rawZone"].toString()}") else return null
+        val rawZone = effectMap["rawZone"].toString()
+        val area = parseEffectArea(rawZone)
+            ?: if (VldbCoreInitializer.DEBUG) error("Failed parse raw zone : $rawZone") else return null
         if (VldbCoreInitializer.DEBUG) {
             println(spellEffectType)
         }
@@ -99,7 +104,8 @@ object SpellLevelManager : VldbManager {
         }
         val min = effectMap["diceNum"].toString().toInt()
         val max = effectMap["diceSide"].toString().toInt()
-        return DofusSpellEffect(min, max, rawZone, spellEffectType, targets)
+        val value = effectMap["value"].toString().toInt()
+        return DofusSpellEffect(min, max, value, area, spellEffectType, targets)
     }
 
     private fun effectIdError(effectId: Int): DofusSpellEffectType {
@@ -111,14 +117,14 @@ object SpellLevelManager : VldbManager {
         error("Failed parse effect type : $effectId")
     }
 
-    private fun parseEffectZone(effectZoneStr: String): DofusEffectZone? {
-        val zoneTypeKey = effectZoneStr.firstOrNull() ?: return null
-        val effectZoneType = DofusEffectZoneType.fromKey(zoneTypeKey) ?: return null
-        val size = if (effectZoneStr.length > 1) {
+    private fun parseEffectArea(effectAreaStr: String): DofusEffectArea? {
+        val zoneTypeKey = effectAreaStr.firstOrNull() ?: return null
+        val effectZoneType = DofusEffectAreaType.fromKey(zoneTypeKey) ?: return null
+        val size = if (effectAreaStr.length > 1) {
             //TODO parse all the effect zone params
-            effectZoneStr[1].digitToIntOrNull() ?: return null
+            effectAreaStr[1].digitToIntOrNull() ?: return null
         } else 1
-        return DofusEffectZone(effectZoneType, size)
+        return DofusEffectArea(effectZoneType, size)
     }
 
     override fun getNeededManagers(): List<VldbManager> {

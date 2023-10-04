@@ -5,21 +5,22 @@ import fr.lewon.dofus.bot.core.fighter.PlayerType
 
 enum class DofusSpellTargetType(
     val key: Char,
-    val canHitTarget: (id: Int?, caster: IDofusFighter, target: IDofusFighter) -> Boolean
+    val isTargetValid: (id: Int?, caster: IDofusFighter, target: IDofusFighter) -> Boolean,
+    val isPrimary: Boolean = false
 ) {
 
     ALLIES('a', { _, caster, target ->
         caster.getFighterTeamId() == target.getFighterTeamId()
-    }),
+    }, isPrimary = true),
     ENEMIES('A', { _, caster, target ->
         caster.getFighterTeamId() != target.getFighterTeamId()
-    }),
+    }, isPrimary = true),
     CASTER_1('c', { _, caster, target ->
         caster.getFighterId() == target.getFighterId()
-    }),
+    }, isPrimary = true),
     CASTER_2('C', { _, caster, target ->
         caster.getFighterId() == target.getFighterId()
-    }),
+    }, isPrimary = true),
     SPECIFIC_ALLIED_SUMMON('F', { id, _, target ->
         target.getPlayerType() != PlayerType.HUMAN && target.getBreed() == id
     }),
@@ -80,6 +81,9 @@ enum class DofusSpellTargetType(
             && target.getPlayerType() != PlayerType.HUMAN
             && !target.isSummon()
             && !target.isStaticElement()
+    }),
+    WAS_TELEFRAGGED_THIS_TURN('T', { _, _, target ->
+        target.wasTelefraggedThisTurn()
     })
     ;
 

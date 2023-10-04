@@ -124,6 +124,6 @@ class HarvestResourceTask(private val interactiveElement: InteractiveElement) : 
         )
 
     override fun onStarted(): String {
-        return "Harvesting resource ..."
+        return "Harvesting resource [${interactiveElement.elementId}] ..."
     }
 }

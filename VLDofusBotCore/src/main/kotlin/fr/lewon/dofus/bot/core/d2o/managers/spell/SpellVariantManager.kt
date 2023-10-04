@@ -2,6 +2,7 @@ package fr.lewon.dofus.bot.core.d2o.managers.spell
 
 import fr.lewon.dofus.bot.core.VldbManager
 import fr.lewon.dofus.bot.core.d2o.D2OUtil
+import fr.lewon.dofus.bot.core.model.spell.DofusSpell
 import fr.lewon.dofus.bot.core.model.spell.DofusSpellVariant
 
 object SpellVariantManager : VldbManager {
@@ -28,4 +29,11 @@ object SpellVariantManager : VldbManager {
         return variantsByBreedId[breedId] ?: error("No variant for breed : $breedId")
     }
 
+    fun getSortedSpells(breedId: Int): List<DofusSpell> = getSpellVariants(breedId).filter {
+        it.spells.none { spell -> spell.adminName !in listOf("", "null") }
+    }.sortedWith(
+        compareBy(
+            { it.spells.minOfOrNull { spell -> spell.levels.minOf { spellLevel -> spellLevel.minPlayerLevel } } },
+            { it.id })
+    ).flatMap { it.spells }
 }

@@ -148,19 +148,21 @@ fun LogItemsContent(loggerUIState: MutableState<LoggerUIState>) {
                         loggerUIState.value = loggerUIStateValue.copy(autoScroll = true)
                     }
                 }, state = listState) {
-                    items(items = logItems, itemContent = { logItem ->
-                        if (logItem.description.isEmpty()) {
-                            CommonText(logItem.text)
+                    items(items = logItems, itemContent = { logItemState ->
+                        val color = logItemState.logItem.color?.let { Color(it.rgb) } ?: Color.White
+                        if (logItemState.description.isEmpty()) {
+                            CommonText(logItemState.text, enabledColor = color)
                         } else {
-                            val expanded = loggerUIState.value.expandedLogItem == logItem
+                            val expanded = loggerUIState.value.expandedLogItem == logItemState
                             ExpandableText(
-                                text = logItem.text,
-                                expanded = loggerUIState.value.expandedLogItem == logItem,
+                                text = logItemState.text,
+                                expanded = loggerUIState.value.expandedLogItem == logItemState,
                                 onExpandButtonClick = {
                                     loggerUIState.value = loggerUIState.value.copy(
-                                        expandedLogItem = if (expanded) null else logItem
+                                        expandedLogItem = if (expanded) null else logItemState
                                     )
-                                }
+                                },
+                                defaultColor = color
                             )
                         }
                     })

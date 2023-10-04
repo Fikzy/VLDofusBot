@@ -1,11 +1,19 @@
 package fr.lewon.dofus.bot.core.logs
 
+import java.awt.Color
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.atomic.AtomicLong
 
-class LogItem(val parent: LogItem?, val message: String, val description: String = "", subItemCapacity: Int) {
+class LogItem(
+    val parent: LogItem?,
+    val message: String,
+    val description: String = "",
+    subItemCapacity: Int,
+    val color: Color? = null
+) {
 
     companion object {
+
         private val ID_GENERATOR = AtomicLong(0)
     }
 

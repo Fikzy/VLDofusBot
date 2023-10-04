@@ -10,9 +10,8 @@ object GameEntitiesDispositionEventHandler : IEventHandler<GameEntitiesDispositi
     override fun onEventReceived(socketResult: GameEntitiesDispositionMessage, connection: DofusConnection) {
         val gameInfo = GameSnifferUtil.getGameInfoByConnection(connection)
         for (disposition in socketResult.dispositions) {
-            gameInfo.fightBoard.getFighterById(disposition.id)?.let {
-                gameInfo.fightBoard.move(it, disposition.cellId)
-            }
+            val fighter = gameInfo.fightBoard.getOrCreateFighterById(disposition.id)
+            gameInfo.fightBoard.move(fighter, disposition.cellId)
         }
     }
 

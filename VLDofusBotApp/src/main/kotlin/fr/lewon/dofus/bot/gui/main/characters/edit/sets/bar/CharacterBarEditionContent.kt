@@ -16,14 +16,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.dp
 import fr.lewon.dofus.bot.gui.custom.*
-import fr.lewon.dofus.bot.gui.main.DragTarget
-import fr.lewon.dofus.bot.gui.main.DropTarget
-import fr.lewon.dofus.bot.gui.main.TooltipPlacement
-import fr.lewon.dofus.bot.gui.main.TooltipTarget
+import fr.lewon.dofus.bot.gui.main.*
 import fr.lewon.dofus.bot.gui.main.characters.CharacterUIState
 import fr.lewon.dofus.bot.gui.util.AppColors
 import fr.lewon.dofus.bot.model.characters.sets.CharacterSetElement
-import fr.lewon.dofus.bot.util.StringUtil
+import fr.lewon.dofus.bot.util.StringUtil.removeAccents
 import kotlinx.coroutines.launch
 
 private val keys = listOf('1', '2', '3', '4', '5', '6', '7', '8', '9', '0')
@@ -271,7 +268,7 @@ private fun <T> AvailableElements(
     updateElementId: (key: Char, ctrlModifier: Boolean, id: Int?) -> Unit,
 ) {
     val filteredElements = availableElements.filter {
-        StringUtil.removeAccents(getElementName(it)).contains(StringUtil.removeAccents(nameFilter), ignoreCase = true)
+        getElementName(it).removeAccents().contains(nameFilter.removeAccents(), ignoreCase = true)
     }
     DropTarget<ElementDrag<T>>(Modifier.fillMaxSize()) { isInBound, elementDrag ->
         if (isInBound && elementDrag?.fromKey != null) {
@@ -286,7 +283,13 @@ private fun <T> AvailableElements(
                 ElementBox(Modifier.padding(1.dp)) {
                     TooltipTarget(
                         key = getElementId(element),
-                        tooltipContent = { getElementTooltipContent(element) },
+                        tooltipContent = {
+                            if (dragTargetInfo.value.isDragging) {
+                                CommonText("Dragging ...")
+                            } else {
+                                getElementTooltipContent(element)
+                            }
+                        },
                         tooltipPlacement = TooltipPlacement.TopCornerAttached,
                         modifier = Modifier.fillMaxSize(),
                     ) {

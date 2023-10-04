@@ -1,4 +1,4 @@
-package fr.lewon.dofus.bot.gui.main.devtools
+package fr.lewon.dofus.bot.gui.main.devtools.d2o
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons

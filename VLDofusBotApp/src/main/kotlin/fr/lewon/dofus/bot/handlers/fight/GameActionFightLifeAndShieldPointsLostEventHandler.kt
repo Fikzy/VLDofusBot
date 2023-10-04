@@ -14,9 +14,8 @@ object GameActionFightLifeAndShieldPointsLostEventHandler :
     ) {
         val gameInfo = GameSnifferUtil.getGameInfoByConnection(connection)
         GameActionFightLifePointsLostEventHandler.onEventReceived(socketResult, connection)
-        gameInfo.fightBoard.getFighterById(socketResult.targetId)?.let {
-            it.shield -= socketResult.shieldLoss
-        }
+        val fighter = gameInfo.fightBoard.getOrCreateFighterById(socketResult.targetId)
+        fighter.shield -= socketResult.shieldLoss
     }
 
 }

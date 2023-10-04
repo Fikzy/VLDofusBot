@@ -9,7 +9,8 @@ import kotlin.math.abs
 class DofusBoard(width: Int = MAP_WIDTH, height: Int = MAP_HEIGHT) {
 
     companion object {
-        private const val HEIGHT_RATIO = 0.885f
+
+        const val HEIGHT_RATIO = 0.885f
         const val MAP_CELLS_COUNT = D2PMapsAdapter.MAP_CELLS_COUNT
         const val MAP_WIDTH = 14
         const val MAP_HEIGHT = 20
@@ -109,7 +110,7 @@ class DofusBoard(width: Int = MAP_WIDTH, height: Int = MAP_HEIGHT) {
         return abs(fromCell.col - toCell.col) + abs(fromCell.row - toCell.row)
     }
 
-    private fun getPath(fromCell: DofusCell, toCell: DofusCell, fly: Boolean = false): List<DofusCell>? {
+    fun getPath(fromCell: DofusCell, toCell: DofusCell, fly: Boolean = false): List<DofusCell>? {
         if (fromCell == toCell) {
             return emptyList()
         }
@@ -144,18 +145,18 @@ class DofusBoard(width: Int = MAP_WIDTH, height: Int = MAP_HEIGHT) {
         return null
     }
 
-    fun cellsAtRange(minRange: Int, maxRange: Int, fromCell: DofusCell): List<Pair<DofusCell, Int>> {
+    fun cellsAtRange(minRange: Int, maxRange: Int, fromCell: DofusCell): List<DofusCell> {
         return cellsAtRange(minRange, maxRange, listOf(fromCell))
     }
 
-    fun cellsAtRange(minRange: Int, maxRange: Int, fromCells: List<DofusCell>): List<Pair<DofusCell, Int>> {
-        val cellsAtRange = ArrayList<Pair<DofusCell, Int>>()
-        val explored = ArrayList<Int>()
+    fun cellsAtRange(minRange: Int, maxRange: Int, fromCells: List<DofusCell>): List<DofusCell> {
+        val cellsAtRange = ArrayList<DofusCell>()
+        val explored = fromCells.map { it.cellId }.toMutableList()
         var frontier = fromCells.toList()
 
         if (minRange == 0) {
             fromCells.forEach {
-                cellsAtRange.add(it to 0)
+                cellsAtRange.add(it)
             }
         }
 
@@ -165,7 +166,7 @@ class DofusBoard(width: Int = MAP_WIDTH, height: Int = MAP_HEIGHT) {
                 for (neighbor in cell.neighbors) {
                     if (!explored.contains(neighbor.cellId)) {
                         if (i >= minRange) {
-                            cellsAtRange.add(neighbor to i)
+                            cellsAtRange.add(neighbor)
                         }
                         explored.add(neighbor.cellId)
                         newFrontier.add(neighbor)

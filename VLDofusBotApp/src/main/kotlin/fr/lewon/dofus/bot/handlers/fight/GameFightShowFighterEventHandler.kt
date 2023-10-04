@@ -2,7 +2,7 @@ package fr.lewon.dofus.bot.handlers.fight
 
 import fr.lewon.dofus.bot.core.d2o.managers.entity.MonsterManager
 import fr.lewon.dofus.bot.game.fight.DofusCharacteristics
-import fr.lewon.dofus.bot.game.fight.Fighter
+import fr.lewon.dofus.bot.game.fight.fighter.Fighter
 import fr.lewon.dofus.bot.sniffer.DofusConnection
 import fr.lewon.dofus.bot.sniffer.model.messages.game.context.fight.character.GameFightShowFighterMessage
 import fr.lewon.dofus.bot.sniffer.model.types.game.context.fight.GameFightCharacterInformations

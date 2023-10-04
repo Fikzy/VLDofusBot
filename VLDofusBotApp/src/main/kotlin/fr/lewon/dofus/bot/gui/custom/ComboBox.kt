@@ -25,7 +25,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.*
 import fr.lewon.dofus.bot.gui.util.AppColors
-import fr.lewon.dofus.bot.util.StringUtil
+import fr.lewon.dofus.bot.util.StringUtil.removeAccents
 import kotlinx.coroutines.launch
 
 private data class ComboBoxState<T>(
@@ -57,8 +57,8 @@ fun <T> ComboBox(
         Icons.Filled.KeyboardArrowDown
     }
     val filteringOptions = items.filter {
-        state.expanded && (!state.filterItems || StringUtil.removeAccents(getItemText(it))
-            .contains(StringUtil.removeAccents(state.selectedText), ignoreCase = true))
+        state.expanded && (!state.filterItems || getItemText(it).removeAccents()
+            .contains(state.selectedText.removeAccents(), ignoreCase = true))
     }
     if (!filteringOptions.contains(state.preSelectedItem)) {
         state = state.copy(preSelectedItem = filteringOptions.firstOrNull() ?: selectedItem)

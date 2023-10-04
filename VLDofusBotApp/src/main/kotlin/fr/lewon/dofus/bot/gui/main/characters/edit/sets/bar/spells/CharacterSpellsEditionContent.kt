@@ -14,7 +14,6 @@ import fr.lewon.dofus.bot.core.d2o.managers.characteristic.BreedManager
 import fr.lewon.dofus.bot.core.d2o.managers.spell.SpellManager
 import fr.lewon.dofus.bot.core.d2o.managers.spell.SpellVariantManager
 import fr.lewon.dofus.bot.core.model.spell.DofusSpell
-import fr.lewon.dofus.bot.core.model.spell.DofusSpellVariant
 import fr.lewon.dofus.bot.gui.custom.CommonText
 import fr.lewon.dofus.bot.gui.custom.HorizontalSeparator
 import fr.lewon.dofus.bot.gui.main.characters.CharacterUIState
@@ -27,8 +26,8 @@ import fr.lewon.dofus.bot.util.filemanagers.impl.SpellAssetManager
 
 @Composable
 fun CharacterSpellsEditionContent(characterUIState: CharacterUIState) {
-    val classSpells = getSpells(SpellVariantManager.getSpellVariants(characterUIState.dofusClassId))
-    val additionalSpells = getSpells(SpellVariantManager.getSpellVariants(BreedManager.anyBreedId))
+    val classSpells = SpellVariantManager.getSortedSpells(characterUIState.dofusClassId)
+    val additionalSpells = SpellVariantManager.getSortedSpells(BreedManager.anyBreedId)
     CharacterElementBarEditionContent(
         characterUIState = characterUIState,
         setElements = CharacterSetsUiUtil.getCurrentSet(characterUIState.name).spells,
@@ -59,16 +58,8 @@ fun CharacterSpellBar(characterName: String, includeTitle: Boolean = true) = Cha
     includeTitle = includeTitle
 )
 
-private fun getSpells(spellVariants: List<DofusSpellVariant>) = spellVariants.filter {
-    it.spells.none { spell -> spell.adminName !in listOf("", "null") }
-}.sortedWith(
-    compareBy(
-        { it.spells.minOfOrNull { spell -> spell.levels.minOf { spellLevel -> spellLevel.minPlayerLevel } } },
-        { it.id })
-).flatMap { it.spells }
-
 @Composable
-private fun SpellImageContent(spell: DofusSpell) {
+fun SpellImageContent(spell: DofusSpell) {
     val isParsedCompletely = spell.levels.all { it.isParsedCompletely }
     val isEffectsEmpty = spell.levels.any { it.effects.isEmpty() }
     SpellAssetManager.getIconPainter(spell.id)?.let { painter ->
@@ -93,7 +84,7 @@ private fun SpellImageContent(spell: DofusSpell) {
 }
 
 @Composable
-private fun SpellTooltipContent(spell: DofusSpell) {
+fun SpellTooltipContent(spell: DofusSpell) {
     val isParsedCompletely = spell.levels.all { spellLevel -> spellLevel.isParsedCompletely }
     val isEffectsEmpty = spell.levels.any { spellLevel -> spellLevel.effects.isEmpty() }
     Column(Modifier.widthIn(max = 300.dp).padding(vertical = 10.dp)) {
@@ -103,16 +94,38 @@ private fun SpellTooltipContent(spell: DofusSpell) {
         } else if (!isParsedCompletely) {
             CommonText("(Effects partially parsed)")
         }
-        spell.levels.lastOrNull()?.effects?.takeIf { it.isNotEmpty() }?.let { effects ->
-            HorizontalSeparator("Effects", modifier = Modifier.padding(vertical = 5.dp))
-            effects.forEach {
-                val targets = it.targets.joinToString(" / ") { target ->
-                    val typeName = target.type.name
-                    val typeIdSuffix = target.id?.let { id -> "($id)" } ?: ""
-                    val casterOverwriteTargetStr = if (target.casterOverwriteTarget) "*" else ""
-                    "$typeName$casterOverwriteTargetStr$typeIdSuffix"
+        val spellLevel = spell.levels.lastOrNull()
+        if (spellLevel != null) {
+            HorizontalSeparator("General Info", modifier = Modifier.padding(vertical = 5.dp))
+            val rangeCanBeBoostedText = if (spellLevel.rangeCanBeBoosted) "(Range can be boosted)" else ""
+            CommonText(
+                "Range : ${spellLevel.minRange} - ${spellLevel.maxRange} $rangeCanBeBoostedText",
+                fontSize = 11.sp
+            )
+            val effects = spellLevel.effects
+            if (effects.isNotEmpty()) {
+                HorizontalSeparator("Effects", modifier = Modifier.padding(vertical = 5.dp))
+                effects.forEach {
+                    val targets = it.targets.joinToString(" / ") { target ->
+                        val typeName = target.type.name
+                        val typeIdSuffix = target.id?.let { id -> "($id)" } ?: ""
+                        val casterOverwriteTargetStr = if (target.casterOverwriteTarget) "*" else ""
+                        "$typeName$casterOverwriteTargetStr$typeIdSuffix"
+                    }
+                    CommonText(
+                        "Targets : $targets",
+                        fontSize = 11.sp
+                    )
+                    CommonText(
+                        "Area : ${it.area.effectAreaType.name}",
+                        fontSize = 11.sp
+                    )
+                    CommonText(
+                        "Effect : ${it.effectType.name}",
+                        fontSize = 11.sp
+                    )
+                    Spacer(Modifier.height(10.dp))
                 }
-                CommonText("$targets => ${it.effectType.name}", fontSize = 11.sp)
             }
         }
     }

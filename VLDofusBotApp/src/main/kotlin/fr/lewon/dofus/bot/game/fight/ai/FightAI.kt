@@ -3,16 +3,15 @@ package fr.lewon.dofus.bot.game.fight.ai
 import fr.lewon.dofus.bot.core.model.spell.DofusSpellLevel
 import fr.lewon.dofus.bot.game.DofusBoard
 import fr.lewon.dofus.bot.game.DofusCell
-import fr.lewon.dofus.bot.game.fight.DofusCharacteristics
 import fr.lewon.dofus.bot.game.fight.FightBoard
 import fr.lewon.dofus.bot.game.fight.ai.complements.AIComplement
-import fr.lewon.dofus.bot.game.fight.operations.CooldownState
+import fr.lewon.dofus.bot.game.fight.cooldowns.CooldownState
 import fr.lewon.dofus.bot.game.fight.operations.FightOperation
 
 abstract class FightAI(protected val dofusBoard: DofusBoard, protected val aiComplement: AIComplement) {
 
-    protected val cooldownState = CooldownState()
-    protected var currentTurn = 0
+    private val cooldownState = CooldownState()
+    var currentTurn = 0
 
     fun onFightStart(fightBoard: FightBoard) {
         currentTurn = 0
@@ -21,11 +20,14 @@ abstract class FightAI(protected val dofusBoard: DofusBoard, protected val aiCom
         playerFighter.spells.filter { it.initialCooldown > 0 }.forEach {
             cooldownSpellStore[it] = it.initialCooldown + 1
         }
+        fightBoard.getAllFighters().forEach {
+            it.previousCellIds.clear()
+        }
     }
 
     abstract fun selectStartCell(fightBoard: FightBoard): DofusCell?
 
-    fun onNewTurn(fightBoard: FightBoard) {
+    fun onNewTurn() {
         currentTurn++
         cooldownState.globalTurnUseSpellStore.clear()
         val toRemove = ArrayList<DofusSpellLevel>()
@@ -39,9 +41,6 @@ abstract class FightAI(protected val dofusBoard: DofusBoard, protected val aiCom
                 }
             }
             toRemove.forEach { cooldownSpellStore.remove(it) }
-        }
-        fightBoard.getPlayerFighter()?.let {
-            it.totalMp = DofusCharacteristics.MOVEMENT_POINTS.getValue(it)
         }
     }
 

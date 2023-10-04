@@ -3,7 +3,8 @@ package fr.lewon.dofus.bot.game.fight.ai
 import fr.lewon.dofus.bot.game.DofusBoard
 import fr.lewon.dofus.bot.game.fight.DofusCharacteristics
 import fr.lewon.dofus.bot.game.fight.FightBoard
-import fr.lewon.dofus.bot.game.fight.Fighter
+import fr.lewon.dofus.bot.game.fight.fighter.Fighter
+import fr.lewon.dofus.bot.game.fight.utils.FightMoveUtils
 import kotlin.math.min
 
 class DangerMap(
@@ -31,15 +32,13 @@ class DangerMap(
         fightBoard.getAllFighters().filter { it.id != enemyFighter.id }
             .forEach { fightBoard.killFighter(it.id) }
         val mp = min(10, DofusCharacteristics.MOVEMENT_POINTS.getValue(enemyFighter))
-        val accessibleCells = fightBoard.getMoveCellsWithMpUsed(mp, enemyFighter.cell)
-            .map { it.first }
+        val accessibleCells = FightMoveUtils.getMoveCells(fightBoard, mp, enemyFighter.cell)
         val dangerByCell = computeIfAbsent(enemyFighter.id) { HashMap() }
         for (spell in enemyFighter.spells) {
             val realDamage = spell.effects
                 .sumOf { damageCalculator.getRealEffectDamage(it, enemyFighter, playerFighter, false).maxDamage }
             val cellsWithLos = dofusBoard.cellsAtRange(spell.minRange, spell.maxRange, accessibleCells)
-                .filter { accessibleCells.any { ac -> fightBoard.lineOfSight(it.first, ac) } }
-                .map { it.first }
+                .filter { accessibleCells.any { ac -> fightBoard.lineOfSight(it, ac) } }
             for (cell in cellsWithLos) {
                 val currentDanger = dangerByCell[cell.cellId] ?: 0
                 dangerByCell[cell.cellId] = currentDanger + realDamage
