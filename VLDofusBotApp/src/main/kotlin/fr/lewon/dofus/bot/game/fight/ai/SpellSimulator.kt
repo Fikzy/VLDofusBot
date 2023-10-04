@@ -91,11 +91,11 @@ class SpellSimulator(val dofusBoard: DofusBoard) {
             DofusSpellEffectType.PULL ->
                 simulatePull(fightBoard, casterCellId, targetCellId, fightersInAOE, effect.min)
             DofusSpellEffectType.SWITCH_POSITIONS ->
-                simulateSwitchPositions(fightBoard, caster, targetCellId)
+                simulateSwitchPositions(fightBoard, caster, fightersInAOE)
             DofusSpellEffectType.ROLLBACK_PREVIOUS_POSITION ->
                 simulateRollbackPreviousPosition(fightBoard, fightersInAOE)
             DofusSpellEffectType.TELESWAP_MIRROR ->
-                simulateTeleswapMirror(fightBoard, caster, targetCellId)
+                simulateTeleswapMirror(fightBoard, caster, fightersInAOE)
             DofusSpellEffectType.TELESWAP_MIRROR_CASTER ->
                 simulateTeleswapMirrorCaster(fightBoard, caster, fightersInAOE)
             DofusSpellEffectType.AIR_DAMAGE, DofusSpellEffectType.EARTH_DAMAGE, DofusSpellEffectType.FIRE_DAMAGE, DofusSpellEffectType.NEUTRAL_DAMAGE, DofusSpellEffectType.WATER_DAMAGE ->
@@ -300,11 +300,12 @@ class SpellSimulator(val dofusBoard: DofusBoard) {
         }
     }
 
-    private fun simulateSwitchPositions(fightBoard: FightBoard, caster: Fighter, targetCellId: Int) {
-        val target = fightBoard.getFighter(targetCellId) ?: return
-        val oldCasterCellId = caster.cell.cellId
-        fightBoard.move(caster, targetCellId)
-        fightBoard.move(target, oldCasterCellId)
+    private fun simulateSwitchPositions(fightBoard: FightBoard, caster: Fighter, fightersInAOE: List<Fighter>) {
+        for (target in fightersInAOE) {
+            val oldCasterCellId = caster.cell.cellId
+            fightBoard.move(caster, target.cell.cellId)
+            fightBoard.move(target, oldCasterCellId)
+        }
     }
 
     private fun simulateRollbackPreviousPosition(fightBoard: FightBoard, fightersInAOE: List<Fighter>) {
@@ -325,19 +326,21 @@ class SpellSimulator(val dofusBoard: DofusBoard) {
     private fun simulateTeleswapMirror(
         fightBoard: FightBoard,
         caster: Fighter,
-        targetCellId: Int
+        fightersInAOE: List<Fighter>
     ) {
-        val targetCell = dofusBoard.getCell(targetCellId)
-        val dRow = targetCell.row - caster.cell.row
-        val dCol = targetCell.col - caster.cell.col
-        dofusBoard.getCell(targetCell.col + dCol, targetCell.row + dRow)?.let { newCasterCell ->
-            if (newCasterCell.isAccessible()) {
-                val fighterOnNewCell = fightBoard.getFighter(newCasterCell)
-                if (fighterOnNewCell != null) {
-                    fightBoard.move(fighterOnNewCell, caster.cell)
-                    fighterOnNewCell.telefraggedThisTurn = true
+        for (fighter in fightersInAOE) {
+            val targetCell = fighter.cell
+            val dRow = targetCell.row - caster.cell.row
+            val dCol = targetCell.col - caster.cell.col
+            dofusBoard.getCell(targetCell.col + dCol, targetCell.row + dRow)?.let { newCasterCell ->
+                if (newCasterCell.isAccessible()) {
+                    val fighterOnNewCell = fightBoard.getFighter(newCasterCell)
+                    if (fighterOnNewCell != null) {
+                        fightBoard.move(fighterOnNewCell, caster.cell)
+                        fighterOnNewCell.telefraggedThisTurn = true
+                    }
+                    fightBoard.move(caster, newCasterCell)
                 }
-                fightBoard.move(caster, newCasterCell)
             }
         }
     }
