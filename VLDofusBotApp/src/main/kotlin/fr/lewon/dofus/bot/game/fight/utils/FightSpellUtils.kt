@@ -25,11 +25,8 @@ object FightSpellUtils {
             || effectTypes.contains(DofusSpellEffectType.DASH)) && !spell.needTakenCell
         val isSummonSpell = effectTypes.contains(DofusSpellEffectType.SUMMON_CREATURE)
         val rawTargetCells = getRawSpellTargetCells(dofusBoard, casterFighter, spell)
-        if (isMovingSpell) {
+        if (isMovingSpell || isSummonSpell) {
             return rawTargetCells.filter { it.isAccessible() }.map { it.cellId }
-        }
-        if (isSummonSpell) {
-            return rawTargetCells.filter { it.isAccessible() && it in casterFighter.cell.neighbors }.map { it.cellId }
         }
         val rawTargetCellIds = rawTargetCells.map { it.cellId }
         val fighterCellIds = getAffectedFighters(fightBoard, casterFighter, spell.effects)
