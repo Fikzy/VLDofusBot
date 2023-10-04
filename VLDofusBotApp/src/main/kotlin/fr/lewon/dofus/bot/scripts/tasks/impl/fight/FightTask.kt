@@ -117,7 +117,9 @@ open class FightTask(
     }
 
     private fun isFightEnded(gameInfo: GameInfo): Boolean {
-        return gameInfo.eventStore.getLastEvent(GameFightEndMessage::class.java) != null
+        return gameInfo.fightBoard.getEnemyFighters().isEmpty()
+            || gameInfo.fightBoard.getAlliedFighters().isEmpty()
+            || gameInfo.eventStore.getLastEvent(GameFightEndMessage::class.java) != null
             || gameInfo.eventStore.getLastEvent(MapComplementaryInformationsDataMessage::class.java) != null
     }
 
@@ -181,7 +183,7 @@ open class FightTask(
                             gameInfo.logger.addSubLog("${it.value} on ${it.key}", damagesLogItem)
                         }
                     }
-                    castSpell(gameInfo, characterSpell, gameInfo.dofusBoard.getCell(nextOperation.targetCellId))
+                    processCastSpell(gameInfo, characterSpell, gameInfo.dofusBoard.getCell(nextOperation.targetCellId))
                 }
                 val waitingAcknowledgementLogItem = gameInfo.logger.addSubLog(
                     "Waiting acknowledgment ...",
@@ -289,7 +291,7 @@ open class FightTask(
         RetryUtil.tryUntilSuccess(
             { MouseUtil.doubleLeftClick(gameInfo, target.getCenter()) },
             {
-                WaitUtil.waitUntil(2000) { isMoveRequested(gameInfo) }
+                WaitUtil.waitUntil(1500) { isMoveRequested(gameInfo) }
             },
             4
         ) ?: error("Couldn't request move to cell : ${target.cellId}")
@@ -301,7 +303,7 @@ open class FightTask(
             || gameInfo.eventStore.getLastEvent(SequenceStartMessage::class.java) != null
             || gameInfo.eventStore.getLastEvent(GameMapMovementRequestMessage::class.java) != null
 
-    private fun castSpell(gameInfo: GameInfo, characterSpell: CharacterSetElement, target: DofusCell) {
+    private fun processCastSpell(gameInfo: GameInfo, characterSpell: CharacterSetElement, target: DofusCell) {
         RetryUtil.tryUntilSuccess(
             {
                 val keyEvent = KeyEvent.getExtendedKeyCodeForChar(characterSpell.key.code)
@@ -309,7 +311,7 @@ open class FightTask(
                 MouseUtil.leftClick(gameInfo, target.getCenter())
             },
             {
-                WaitUtil.waitUntil(2000) { isSpellCastRequested(gameInfo) }
+                WaitUtil.waitUntil(1500) { isSpellCastRequested(gameInfo) }
             },
             4
         ) ?: error(buildSpellErrorMessage(characterSpell, target))

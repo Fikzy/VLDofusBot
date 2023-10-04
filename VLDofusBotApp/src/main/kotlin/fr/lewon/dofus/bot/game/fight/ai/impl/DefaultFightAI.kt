@@ -8,6 +8,7 @@ import fr.lewon.dofus.bot.game.fight.ai.FightState
 import fr.lewon.dofus.bot.game.fight.ai.complements.AIComplement
 import fr.lewon.dofus.bot.game.fight.operations.FightOperation
 import fr.lewon.dofus.bot.game.fight.operations.PassTurnOperation
+import fr.lewon.dofus.bot.util.io.WaitUtil
 import kotlin.math.abs
 import kotlin.random.Random
 
@@ -35,6 +36,7 @@ open class DefaultFightAI(dofusBoard: DofusBoard, aiComplement: AIComplement) : 
         val startTime = System.currentTimeMillis()
 
         val maxTimeMillis = 1800
+        val minTimeMillis = 800
         while (frontier.isNotEmpty() && System.currentTimeMillis() - startTime < maxTimeMillis) {
             val nodesToExplore = if (frontier.size < 100) {
                 frontier.toList()
@@ -58,13 +60,14 @@ open class DefaultFightAI(dofusBoard: DofusBoard, aiComplement: AIComplement) : 
                     }
                     if (bestNode.score < childNodeScore) {
                         bestNode = childNode
-                        if (System.currentTimeMillis() - startTime > maxTimeMillis / 2 && bestNode.score >= Int.MAX_VALUE.toDouble()) {
+                        if (System.currentTimeMillis() - startTime > minTimeMillis && bestNode.score >= Int.MAX_VALUE.toDouble()) {
                             return selectOperation(bestNode)
                         }
                     }
                 }
             }
         }
+        WaitUtil.waitUntil { System.currentTimeMillis() - startTime > minTimeMillis }
         return selectOperation(bestNode)
     }
 

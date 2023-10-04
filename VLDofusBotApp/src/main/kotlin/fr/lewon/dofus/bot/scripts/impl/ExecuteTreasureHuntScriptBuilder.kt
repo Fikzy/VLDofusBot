@@ -13,6 +13,7 @@ import fr.lewon.dofus.bot.scripts.parameters.impl.IntParameter
 import fr.lewon.dofus.bot.scripts.tasks.impl.hunt.ExecuteHuntTask
 import fr.lewon.dofus.bot.scripts.tasks.impl.hunt.FetchHuntTask
 import fr.lewon.dofus.bot.scripts.tasks.impl.hunt.RefreshHuntTask
+import fr.lewon.dofus.bot.scripts.tasks.impl.inventory.UseItemsInInventoryTask
 import fr.lewon.dofus.bot.scripts.tasks.impl.transport.ReachMapTask
 import fr.lewon.dofus.bot.util.FormatUtil
 import fr.lewon.dofus.bot.util.game.TreasureHuntUtil
@@ -40,9 +41,9 @@ object ExecuteTreasureHuntScriptBuilder : DofusBotScriptBuilder("Execute treasur
         true,
     )
 
-    private val openChestAfterHuntParameter = BooleanParameter(
-        "Open chest after hunt",
-        "If activated, the bot will open received chests if they are configured in the item bar",
+    private val openChestsParameter = BooleanParameter(
+        "Open chests every 5 hunts",
+        "If activated, the bot will open received chests every 5 hunts.",
         true,
     )
 
@@ -50,7 +51,8 @@ object ExecuteTreasureHuntScriptBuilder : DofusBotScriptBuilder("Execute treasur
         return listOf(
             huntLevelParameter,
             huntCountParameter,
-            continueOnFailureParameter
+            continueOnFailureParameter,
+            openChestsParameter
         )
     }
 
@@ -88,11 +90,14 @@ object ExecuteTreasureHuntScriptBuilder : DofusBotScriptBuilder("Execute treasur
         var successCount = 0
         val huntLevel = parameterValues.getParamValue(huntLevelParameter)
         val continueOnFailure = parameterValues.getParamValue(continueOnFailureParameter)
-        val openChestAfterHunt = parameterValues.getParamValue(openChestAfterHuntParameter)
+        val openChestAfterHunt = parameterValues.getParamValue(openChestsParameter)
         val huntFetchDurations = ArrayList<Long>()
         val huntDurations = ArrayList<Long>()
 
         for (i in 0 until parameterValues.getParamValue(huntCountParameter)) {
+            if (openChestAfterHunt && i % 5 == 0 && !UseItemsInInventoryTask("coffre ").run(logItem, gameInfo)) {
+                error("Couldn't open chests.")
+            }
             val fetchStartTimeStamp = System.currentTimeMillis()
             if (gameInfo.treasureHunt == null) {
                 if (FetchHuntTask(huntLevel).run(logItem, gameInfo)) {
@@ -117,9 +122,6 @@ object ExecuteTreasureHuntScriptBuilder : DofusBotScriptBuilder("Execute treasur
                 successCount++
                 huntDurations.add(huntDuration)
                 statValues[averageHuntDurationStat] = FormatUtil.durationToStr(huntDurations.average().toLong())
-                if (openChestAfterHunt) {
-                    //UseItemInItemBarTask()
-                }
             }
             statValues[successRateStat] = "$successCount / ${i + 1}"
             if (!success) {
