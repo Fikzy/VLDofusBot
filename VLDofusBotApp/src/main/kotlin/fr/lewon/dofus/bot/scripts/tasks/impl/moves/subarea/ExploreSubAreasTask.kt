@@ -27,6 +27,6 @@ class ExploreSubAreasTask(
         ExploreSubAreaTask(subArea = item, explorationParameters = explorationParameters).run(logItem, gameInfo)
 
     override fun buildOnStartedMessage(itemsToExplore: List<DofusSubArea>): String =
-        "Exploring sub paths [${itemsToExplore.joinToString(", ") { it.label }})]"
+        "Exploring sub areas [${itemsToExplore.joinToString(", ") { it.label }})]"
 
 }

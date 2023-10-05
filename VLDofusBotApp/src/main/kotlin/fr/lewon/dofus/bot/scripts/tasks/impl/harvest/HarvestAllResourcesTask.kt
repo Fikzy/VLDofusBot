@@ -19,9 +19,7 @@ class HarvestAllResourcesTask : BooleanDofusBotTask() {
     override fun doExecute(logItem: LogItem, gameInfo: GameInfo): Boolean {
         val itemIdsToHarvest = HarvestableSetsManager.getItemsToHarvest(gameInfo.character.parameters.harvestableSet)
         val toIgnoreResources = ArrayList<InteractiveElement>()
-        val cellDataByHarvestableInteractiveElements = gameInfo.interactiveElements.filter { it.onCurrentMap }
-            .associateWith { InteractiveUtil.getElementCellData(gameInfo, it) }
-        totalHarvestableCount = cellDataByHarvestableInteractiveElements.size
+        totalHarvestableCount = getElementsToHarvestByCellData(gameInfo, itemIdsToHarvest, emptyList()).size
         currentHarvestedCount = 0
         while (true) {
             gameInfo.logger.closeLog("[$currentHarvestedCount/$totalHarvestableCount]", logItem)
@@ -33,11 +31,11 @@ class HarvestAllResourcesTask : BooleanDofusBotTask() {
             val interactiveElement = getNextElementToHarvest(
                 gameInfo = gameInfo,
                 itemIdsToHarvest = itemIdsToHarvest,
-                cellDataByHarvestableInteractiveElements = cellDataByHarvestableInteractiveElements,
                 toIgnoreResources = toIgnoreResources
             ) ?: return true
-            HarvestResourceTask(interactiveElement).run(logItem, gameInfo)
-            toIgnoreResources.add(interactiveElement)
+            if (!HarvestResourceTask(interactiveElement).run(logItem, gameInfo)) {
+                toIgnoreResources.add(interactiveElement)
+            }
             currentHarvestedCount++
         }
     }
@@ -45,24 +43,33 @@ class HarvestAllResourcesTask : BooleanDofusBotTask() {
     private fun getNextElementToHarvest(
         gameInfo: GameInfo,
         itemIdsToHarvest: List<Double>,
-        cellDataByHarvestableInteractiveElements: Map<InteractiveElement, CompleteCellData>,
         toIgnoreResources: List<InteractiveElement>,
     ): InteractiveElement? {
         val playerCellId = gameInfo.entityPositionsOnMapByEntityId[gameInfo.playerId]
             ?: error("Couldn't find player")
         val playerCellLocation = gameInfo.dofusBoard.getCell(playerCellId).getCenter().toPointAbsolute(gameInfo)
-        val invalidMoveCells = MoveUtil.getInvalidCells(gameInfo).map { it.cellId }
-        return cellDataByHarvestableInteractiveElements.filter {
-            !toIgnoreResources.contains(it.key)
-                && !invalidMoveCells.contains(it.value.cellId)
-                && shouldHarvest(it.key, itemIdsToHarvest)
-        }.minByOrNull {
+        return getElementsToHarvestByCellData(gameInfo, itemIdsToHarvest, toIgnoreResources).minByOrNull {
             val harvestableCellLocation = gameInfo.dofusBoard.getCell(it.value.cellId)
                 .getCenter().toPointAbsolute(gameInfo)
             val dx = playerCellLocation.x - harvestableCellLocation.x
             val dy = playerCellLocation.y - harvestableCellLocation.y
             dx * dx + dy * dy
         }?.key
+    }
+
+    private fun getElementsToHarvestByCellData(
+        gameInfo: GameInfo,
+        itemIdsToHarvest: List<Double>,
+        toIgnoreResources: List<InteractiveElement>
+    ): Map<InteractiveElement, CompleteCellData> {
+        val cellDataByHarvestableInteractiveElements = gameInfo.interactiveElements.filter { it.onCurrentMap }
+            .associateWith { InteractiveUtil.getElementCellData(gameInfo, it) }
+        val invalidMoveCells = MoveUtil.getInvalidCells(gameInfo).map { it.cellId }
+        return cellDataByHarvestableInteractiveElements.filter {
+            !toIgnoreResources.contains(it.key)
+                && !invalidMoveCells.contains(it.value.cellId)
+                && shouldHarvest(it.key, itemIdsToHarvest)
+        }
     }
 
     private fun shouldHarvest(
