@@ -56,7 +56,7 @@ Vous pouvez suggérer de nouvelles fonctionnalités ou trouver de l'aide sur le 
 
 La première étape est d'installer le bot. Pour cela, il vous faudra :
 
-- Java <span style="color:red">**(version 11 minimum)**</span>
+- Java <span style="color:red">**(version 11 minimum, version 20 maximum. [Java 17](https://www.oracle.com/fr/java/technologies/downloads/#java17) fera très bien l'affaire.)**</span>
 - Git : [Télécharger](https://git-scm.com/downloads)
 - Npcap pour utiliser le sniffer : [Télécharger](https://npcap.com/#download)
 
