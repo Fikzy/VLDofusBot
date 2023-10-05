@@ -55,7 +55,7 @@ You can suggest new features or find help on discord : https://discord.gg/v45AA3
 
 To get started, you'll first need to install the bot. For this, you'll need :
 
-- Java <span style="color:red">**(at least version 11)**</span>
+- Java <span style="color:red">**(at least version 11, at most 20. [Java 17](https://www.oracle.com/fr/java/technologies/downloads/#java17) will do just fine.)**</span>
 - Git : [Download](https://git-scm.com/downloads)
 - Npcap to use the sniffer : [Download](https://npcap.com/#download)
 
