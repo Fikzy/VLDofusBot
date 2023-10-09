@@ -38,7 +38,7 @@ class DangerMap(
             val realDamage = spell.effects
                 .sumOf { damageCalculator.getRealEffectDamage(it, enemyFighter, playerFighter, false).maxDamage }
             val cellsWithLos = dofusBoard.cellsAtRange(spell.minRange, spell.maxRange, accessibleCells)
-                .filter { accessibleCells.any { ac -> fightBoard.lineOfSight(it, ac) } }
+                .filter { accessibleCells.any { ac -> !spell.castTestLos || fightBoard.lineOfSight(it, ac) } }
             for (cell in cellsWithLos) {
                 val currentDanger = dangerByCell[cell.cellId] ?: 0
                 dangerByCell[cell.cellId] = currentDanger + realDamage

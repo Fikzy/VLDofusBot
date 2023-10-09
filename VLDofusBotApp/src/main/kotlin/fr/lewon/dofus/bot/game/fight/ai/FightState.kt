@@ -64,7 +64,7 @@ class FightState(
             }
             val path = dofusBoard.getPath(fighter.cell, cell)
             if (path != null) {
-                options.add(MoveOperation(path.map { it.cellId }))
+                options.add(MoveOperation(fighter.cell.cellId, currentFighterMp, path.map { it.cellId }))
             }
         }
         return options

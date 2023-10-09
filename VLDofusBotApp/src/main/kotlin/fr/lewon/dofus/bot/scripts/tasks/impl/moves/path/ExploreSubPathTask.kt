@@ -12,7 +12,7 @@ class ExploreSubPathTask(
     explorationParameters: ExplorationParameters
 ) : SingleExplorationTask<SubPath>(subPath, explorationParameters) {
 
-    private val nextMapsToExplore = subPath.mapIds.map(MapManager::getDofusMap).toMutableList()
+    private val nextMapsToExplore = getMapsToExplore().toMutableList()
 
     override fun onExplorationStart(gameInfo: GameInfo, itemToExplore: SubPath, alreadyExploredMaps: List<DofusMap>) {
         while (nextMapsToExplore.firstOrNull() in alreadyExploredMaps) {
@@ -20,7 +20,8 @@ class ExploreSubPathTask(
         }
     }
 
-    override fun getMapsToExplore(itemToExplore: SubPath): List<DofusMap> = nextMapsToExplore
+    override fun getMapsToExplore(): List<DofusMap> =
+        itemToExplore.mapIds.map(MapManager::getDofusMap)
 
     override fun buildOnStartedMessage(itemToExplore: SubPath): String =
         "Exploring sub path [${itemToExplore.displayName}]"

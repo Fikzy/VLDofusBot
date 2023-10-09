@@ -7,6 +7,8 @@ data class ExplorationParameters(
     val searchedMonsterName: String,
     val stopWhenArchMonsterFound: Boolean,
     val stopWhenWantedMonsterFound: Boolean,
+    val useZaaps: Boolean,
     val explorationThresholdMinutes: Int,
-    val useZaaps: Boolean
+    val itemIdToResumeOn: String,
+    val runForever: Boolean
 )

@@ -1,7 +1,6 @@
 package fr.lewon.dofus.bot.sniffer.parser
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import fr.lewon.dofus.bot.core.VldbCoreInitializer
 import fr.lewon.dofus.bot.core.io.stream.ByteArrayReader
 import fr.lewon.dofus.bot.sniffer.DofusMessagePremise
 import fr.lewon.dofus.bot.sniffer.DofusMessageReceiverUtil
@@ -10,7 +9,6 @@ import fr.lewon.dofus.bot.sniffer.exceptions.IncompleteMessageException
 import fr.lewon.dofus.bot.sniffer.exceptions.ParseFailedException
 import fr.lewon.dofus.bot.sniffer.model.messages.NetworkMessage
 import fr.lewon.dofus.bot.sniffer.store.EventStore
-import org.apache.commons.codec.binary.Hex
 import org.pcap4j.packet.TcpPacket
 import java.awt.Color
 
@@ -35,21 +33,10 @@ abstract class MessageParser(private val packetOrigin: PacketOrigin, private val
             if (printNevermind) {
                 println("${getLogPrefix()} : Nevermind, everything worked as planned.")
             }
-        } catch (e: IncompleteMessageException) {
-            // Nothing
         } catch (e: AddToStoreFailedException) {
             e.printStackTrace()
         } catch (e: Exception) {
-            if (VldbCoreInitializer.DEBUG && packets.size == 20) {
-                println("${getLogPrefix()} : Couldn't read message - ${e.message} (packets count : ${packets.size})")
-                println("Packets order        : ${packets.joinToString(", ") { it.header.sequenceNumberAsLong.toString() }}")
-                println("Sorted Packets order : ${getSortedPackets().joinToString(", ") { it.header.sequenceNumberAsLong.toString() }}")
-                val orderedRawData =
-                    getSortedPackets().joinToString("|") { Hex.encodeHexString(it.payload.rawData) }
-                val rawData = packets.joinToString("|") { Hex.encodeHexString(it.payload.rawData) }
-                println("Packets content         : $rawData")
-                println("Ordered packets content : $orderedRawData")
-            }
+            // Nothing
         }
         if (packets.size == 20) {
             println("${getLogPrefix()} : Large packet buffer, character might have crashed. If a character is stuck, please reload sniffer.")

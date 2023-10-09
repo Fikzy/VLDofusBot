@@ -21,11 +21,11 @@ import fr.lewon.dofus.bot.util.game.TravelUtil
 import fr.lewon.dofus.bot.util.network.info.GameInfo
 
 abstract class SingleExplorationTask<T>(
-    private val itemToExplore: T,
+    val itemToExplore: T,
     private val explorationParameters: ExplorationParameters,
 ) : DofusBotTask<ExplorationStatus>() {
 
-    protected abstract fun getMapsToExplore(itemToExplore: T): List<DofusMap>
+    abstract fun getMapsToExplore(): List<DofusMap>
 
     protected abstract fun onExplorationStart(gameInfo: GameInfo, itemToExplore: T, alreadyExploredMaps: List<DofusMap>)
 
@@ -37,37 +37,38 @@ abstract class SingleExplorationTask<T>(
     ): List<DofusMap>
 
     override fun execute(logItem: LogItem, gameInfo: GameInfo): ExplorationStatus {
-        val toExploreMaps = getMapsToExplore(itemToExplore).toMutableList()
-        if (toExploreMaps.isEmpty()) {
+        val allMapsToExplore = getMapsToExplore()
+        val remainingMapsToExplore = allMapsToExplore.toMutableList()
+        if (remainingMapsToExplore.isEmpty()) {
             error("No map to explore found")
         }
-        val alreadyExploredMaps = toExploreMaps.filter {
+        val alreadyExploredMaps = remainingMapsToExplore.filter {
             getMinutesSinceLastExploration(it.id) < explorationParameters.explorationThresholdMinutes
         }
         onExplorationStart(gameInfo, itemToExplore, alreadyExploredMaps)
         var exploredCount = alreadyExploredMaps.size
-        val toExploreTotal = toExploreMaps.size
+        val toExploreTotal = remainingMapsToExplore.size
         LastExplorationUiUtil.updateExplorationProgress(
             character = gameInfo.character,
             item = itemToExplore,
             current = exploredCount,
             total = toExploreTotal
         )
-        toExploreMaps.removeAll(alreadyExploredMaps)
-        if (toExploreMaps.isEmpty()) {
+        remainingMapsToExplore.removeAll(alreadyExploredMaps)
+        if (remainingMapsToExplore.isEmpty()) {
             return ExplorationStatus.Finished
         }
         if (!LeaveHavenBagTask().run(logItem, gameInfo)) {
             return ExplorationStatus.NotFinished
         }
-        val initialMapsToExplore = getNextMapsToExplore(toExploreMaps, alreadyExploredMaps)
+        val initialMapsToExplore = getNextMapsToExplore(remainingMapsToExplore, alreadyExploredMaps)
         TravelUtil.getPath(gameInfo, initialMapsToExplore, gameInfo.buildCharacterBasicInfo())
             ?: return ExplorationStatus.Finished
         val availableZaaps = if (explorationParameters.useZaaps) TravelUtil.getAllZaapMaps() else emptyList()
         if (!ReachMapTask(initialMapsToExplore, availableZaaps).run(logItem, gameInfo)) {
             return ExplorationStatus.NotFinished
         }
-        if (toExploreMaps.remove(gameInfo.currentMap)) {
+        if (remainingMapsToExplore.remove(gameInfo.currentMap)) {
             LastExplorationUiUtil.updateExplorationProgress(
                 character = gameInfo.character,
                 item = itemToExplore,
@@ -78,10 +79,12 @@ abstract class SingleExplorationTask<T>(
         if (foundSearchedMonster(gameInfo)) {
             return ExplorationStatus.FoundSomething
         }
-        while (toExploreMaps.isNotEmpty()) {
-            exploreMap(logItem, gameInfo)
+        while (remainingMapsToExplore.isNotEmpty()) {
+            if (gameInfo.currentMap in allMapsToExplore) {
+                exploreMap(logItem, gameInfo)
+            }
             val characterInfo = gameInfo.buildCharacterBasicInfo(TravelUtil.getAllZaapMaps().map { it.id })
-            val nextMapsToExplore = getNextMapsToExplore(toExploreMaps, alreadyExploredMaps)
+            val nextMapsToExplore = getNextMapsToExplore(remainingMapsToExplore, alreadyExploredMaps)
             val nextVertex = getNextVertexToExplore(gameInfo, nextMapsToExplore, characterInfo)
                 ?: return ExplorationStatus.Finished
             val fromVertex = TravelUtil.getCurrentVertex(gameInfo)
@@ -95,7 +98,7 @@ abstract class SingleExplorationTask<T>(
             if (foundSearchedMonster(gameInfo)) {
                 return ExplorationStatus.FoundSomething
             }
-            if (toExploreMaps.remove(gameInfo.currentMap)) {
+            if (remainingMapsToExplore.remove(gameInfo.currentMap)) {
                 LastExplorationUiUtil.updateExplorationProgress(
                     character = gameInfo.character,
                     item = itemToExplore,

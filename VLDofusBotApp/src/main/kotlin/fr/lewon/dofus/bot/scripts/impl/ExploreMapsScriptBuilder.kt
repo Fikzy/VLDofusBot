@@ -6,10 +6,12 @@ import fr.lewon.dofus.bot.core.logs.LogItem
 import fr.lewon.dofus.bot.core.model.maps.DofusSubArea
 import fr.lewon.dofus.bot.gui.util.UiResource
 import fr.lewon.dofus.bot.model.characters.parameters.ParameterValues
+import fr.lewon.dofus.bot.model.characters.paths.SubPath
 import fr.lewon.dofus.bot.scripts.DofusBotScriptBuilder
 import fr.lewon.dofus.bot.scripts.DofusBotScriptStat
 import fr.lewon.dofus.bot.scripts.parameters.DofusBotParameter
 import fr.lewon.dofus.bot.scripts.parameters.impl.*
+import fr.lewon.dofus.bot.scripts.tasks.impl.moves.MultipleExplorationTask
 import fr.lewon.dofus.bot.scripts.tasks.impl.moves.path.ExploreSubPathsTask
 import fr.lewon.dofus.bot.scripts.tasks.impl.moves.subarea.ExploreSubAreaTask
 import fr.lewon.dofus.bot.scripts.tasks.impl.moves.subarea.ExploreSubAreasTask
@@ -78,6 +80,12 @@ object ExploreMapsScriptBuilder : DofusBotScriptBuilder("Explore maps") {
         parametersGroup = 1,
     )
 
+    val itemIdToResumeOnParameter = StringParameter(
+        "HIDDEN_Item_Id_to_resume_on",
+        "Parameter used for the resume button in exploration screen",
+        defaultValue = "",
+    )
+
     val killEverythingParameter = BooleanParameter(
         "Kill everything",
         "Fights every group of monsters present on the maps",
@@ -134,7 +142,6 @@ object ExploreMapsScriptBuilder : DofusBotScriptBuilder("Explore maps") {
         "Ignore maps any of your character explored less than the passed value (in minutes). Set to 0 or less to ignore.",
         15,
         parametersGroup = 4,
-        displayCondition = { !it.getParamValue(runForeverParameter) }
     )
 
     val useZaapsParameter = BooleanParameter(
@@ -182,53 +189,37 @@ object ExploreMapsScriptBuilder : DofusBotScriptBuilder("Explore maps") {
             stopWhenArchMonsterFound = parameterValues.getParamValue(stopWhenArchMonsterFoundParameter),
             stopWhenWantedMonsterFound = parameterValues.getParamValue(stopWhenQuestMonsterFoundParameter),
             useZaaps = parameterValues.getParamValue(useZaapsParameter),
-            explorationThresholdMinutes = getExplorationThresholdMinutes(parameterValues),
+            explorationThresholdMinutes = parameterValues.getParamValue(ignoreMapsExploredRecentlyParameter),
+            itemIdToResumeOn = parameterValues.getParamValue(itemIdToResumeOnParameter),
+            runForever = parameterValues.getParamValue(runForeverParameter)
         )
-        val success = when (parameterValues.getParamValue(explorationTypeParameter)) {
-            ExplorationType.SubArea -> exploreSubAreas(logItem, gameInfo, parameterValues, explorationParameters)
-            ExplorationType.Path -> explorePath(logItem, gameInfo, parameterValues, explorationParameters)
+        val explorationTask = when (parameterValues.getParamValue(explorationTypeParameter)) {
+            ExplorationType.SubArea -> buildExploreSubAreasTask(gameInfo, parameterValues, explorationParameters)
+            ExplorationType.Path -> buildExploreSubPathsTask(parameterValues, explorationParameters)
         }
-        if (!success) {
+        if (!explorationTask.run(logItem, gameInfo)) {
             error("Failed exploration")
         }
     }
 
-    private fun explorePath(
-        logItem: LogItem,
-        gameInfo: GameInfo,
+    private fun buildExploreSubPathsTask(
         parameterValues: ParameterValues,
         explorationParameters: ExplorationParameters,
-    ): Boolean {
+    ): MultipleExplorationTask<SubPath> {
         val path = parameterValues.getParamValue(pathParameter)
             ?: error("You must select a path.")
-        return ExploreSubPathsTask(
-            subPaths = path.subPaths.filter { it.enabled },
-            runForever = parameterValues.getParamValue(runForeverParameter),
-            explorationParameters = explorationParameters,
-        ).run(logItem, gameInfo)
+        return ExploreSubPathsTask(path.subPaths.filter { it.enabled }, explorationParameters)
     }
 
-    private fun exploreSubAreas(
-        logItem: LogItem,
+    private fun buildExploreSubAreasTask(
         gameInfo: GameInfo,
         parameterValues: ParameterValues,
         explorationParameters: ExplorationParameters,
-    ): Boolean {
+    ): MultipleExplorationTask<DofusSubArea> {
         val subAreas = if (parameterValues.getParamValue(currentAreaParameter)) {
             listOf(gameInfo.currentMap.subArea)
         } else parameterValues.getParamValue(subAreasParameter)
-        return ExploreSubAreasTask(
-            subAreas = subAreas,
-            runForever = parameterValues.getParamValue(runForeverParameter),
-            explorationParameters = explorationParameters,
-        ).run(logItem, gameInfo)
-    }
-
-    private fun getExplorationThresholdMinutes(parameterValues: ParameterValues): Int {
-        val runForever = parameterValues.getParamValue(runForeverParameter)
-        return if (!runForever) {
-            parameterValues.getParamValue(ignoreMapsExploredRecentlyParameter)
-        } else 0
+        return ExploreSubAreasTask(subAreas, explorationParameters)
     }
 
     enum class ExplorationType(val strValue: String, val icon: UiResource) {

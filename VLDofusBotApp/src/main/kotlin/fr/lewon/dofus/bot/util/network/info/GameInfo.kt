@@ -29,7 +29,6 @@ class GameInfo(val character: DofusCharacter) {
     val eventStore = EventStore()
     lateinit var connection: DofusConnection
     var gameBounds = Rectangle()
-    var completeBounds = Rectangle()
 
     var scriptConfiguration = ScriptConfiguration()
 

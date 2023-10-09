@@ -7,8 +7,8 @@ import com.jpexs.decompiler.flash.tags.DefineSpriteTag
 import com.jpexs.decompiler.flash.tags.base.RenderContext
 import com.jpexs.decompiler.flash.timeline.Timeline
 import com.jpexs.helpers.SerializableImage
-import fr.lewon.dofus.bot.core.ui.UIPoint
-import fr.lewon.dofus.bot.core.ui.UIRectangle
+import fr.lewon.dofus.bot.core.ui.geometry.ui.UIPoint
+import fr.lewon.dofus.bot.core.ui.geometry.ui.UIRectangle
 import java.awt.image.BufferedImage
 
 class DefineSprite(val tag: DefineSpriteTag) {
@@ -31,7 +31,7 @@ class DefineSprite(val tag: DefineSpriteTag) {
     /*
      * Based on https://github.com/jindrapetrik/jpexs-decompiler/blob/master/libsrc/ffdec_lib/src/com/jpexs/decompiler/flash/SWF.java#L3461
      */
-    fun getImage(horizontalSymmetry: Boolean): BufferedImage {
+    fun getImage(): BufferedImage {
         val tim = tag.timeline
         val r = tim.displayRect
 
@@ -43,13 +43,26 @@ class DefineSprite(val tag: DefineSpriteTag) {
         image.fillTransparent() // Is that necessary?
 
         val m = Matrix()
-        m.translate(
-            (if (horizontalSymmetry) r.Xmin + r.width else -r.Xmin) * zoom,
-            -r.Ymin * zoom
-        )
-        m.scale(zoom * if (horizontalSymmetry) -1 else 1, zoom)
+        m.translate(-r.Xmin * zoom, -r.Ymin * zoom)
 
-        tim.toImage(0, 0, RenderContext(), image, image, false, m, Matrix(), m, null, zoom, false, ExportRectangle(r), m, true, Timeline.DRAW_MODE_ALL)
+        tim.toImage(
+            0,
+            0,
+            RenderContext(),
+            image,
+            image,
+            false,
+            m,
+            Matrix(),
+            m,
+            null,
+            zoom,
+            false,
+            ExportRectangle(r),
+            m,
+            true,
+            Timeline.DRAW_MODE_ALL
+        )
 
         return image.bufferedImage
     }

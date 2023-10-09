@@ -1,16 +1,15 @@
 package fr.lewon.dofus.bot.core.ui.managers
 
-import fr.lewon.dofus.bot.core.ui.UIBounds
+import fr.lewon.dofus.bot.core.ui.geometry.xml.XmlBounds
 import fr.lewon.dofus.bot.core.ui.xml.anchors.Anchor
 import fr.lewon.dofus.bot.core.ui.xml.anchors.AnchorPoint
 import fr.lewon.dofus.bot.core.ui.xml.containers.Container
 import fr.lewon.dofus.bot.core.ui.xml.sizes.Dimension
 
-
 object XmlContainerInitializer {
 
     fun initAll(container: Container) {
-        container.parentContainer = UIBounds.buildRootContainer()
+        container.parentContainer = XmlBounds.buildRootContainer()
         initContainers(container, container)
         container.initRoot(container)
     }

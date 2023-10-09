@@ -1,7 +1,7 @@
 package fr.lewon.dofus.bot.core.ui.xml.containers
 
-import fr.lewon.dofus.bot.core.ui.UIPoint
-import fr.lewon.dofus.bot.core.ui.UIRectangle
+import fr.lewon.dofus.bot.core.ui.geometry.xml.XmlPoint
+import fr.lewon.dofus.bot.core.ui.geometry.xml.XmlRectangle
 import fr.lewon.dofus.bot.core.ui.managers.UIIconManager
 import fr.lewon.dofus.bot.core.ui.xml.anchors.Anchor
 import fr.lewon.dofus.bot.core.ui.xml.anchors.AnchorPoint
@@ -36,14 +36,14 @@ data class Container(
 
     val children = ArrayList<Container>()
 
-    var defaultTopLeftPosition: UIPoint? = null
-    var defaultSize: UIPoint? = null
+    var defaultTopLeftPosition: XmlPoint? = null
+    var defaultSize: XmlPoint? = null
     lateinit var root: Container
     lateinit var parentContainer: Container
 
     @delegate:Transient
     val bounds by lazy {
-        UIRectangle(computePosition(), size)
+        XmlRectangle(computePosition(), size)
     }
 
     @delegate:Transient
@@ -56,71 +56,71 @@ data class Container(
         sizes.firstOrNull()?.let { parseDimension(it.relDimension, it.absDimension) }
     }
 
-    private fun computePosition(): UIPoint {
+    private fun computePosition(): XmlPoint {
         return defaultTopLeftPosition ?: getPosition(AnchorPoint.TOPLEFT)
     }
 
-    private fun computeSize(): UIPoint {
+    private fun computeSize(): XmlPoint {
         defaultSize?.let { return it }
         fixedSize?.let { return it }
         var width = computeWidthWithAnchors()
         var height = computeHeightWithAnchors()
         if (width != null && height != null) {
-            return UIPoint(width, height)
+            return XmlPoint(width, height)
         }
         val size = computeSizeUsingChildren()
             ?: computeIconSize()
         width = width ?: size.x
         height = height ?: size.y
-        return UIPoint(width, height)
+        return XmlPoint(width, height)
     }
 
     @delegate:Transient
-    private val centerPosition: UIPoint? by lazy {
+    private val centerPosition: XmlPoint? by lazy {
         getForcedPosition(AnchorPoint.CENTER)
     }
 
     @delegate:Transient
-    private val topLeftPosition: UIPoint? by lazy {
+    private val topLeftPosition: XmlPoint? by lazy {
         getForcedPosition(AnchorPoint.TOPLEFT)
     }
 
     @delegate:Transient
-    private val topPosition: UIPoint? by lazy {
+    private val topPosition: XmlPoint? by lazy {
         getForcedPosition(AnchorPoint.TOP)
     }
 
     @delegate:Transient
-    private val topRightPosition: UIPoint? by lazy {
+    private val topRightPosition: XmlPoint? by lazy {
         getForcedPosition(AnchorPoint.TOPRIGHT)
     }
 
     @delegate:Transient
-    private val rightPosition: UIPoint? by lazy {
+    private val rightPosition: XmlPoint? by lazy {
         getForcedPosition(AnchorPoint.RIGHT)
     }
 
     @delegate:Transient
-    private val bottomRightPosition: UIPoint? by lazy {
+    private val bottomRightPosition: XmlPoint? by lazy {
         getForcedPosition(AnchorPoint.BOTTOMRIGHT)
     }
 
     @delegate:Transient
-    private val bottomPosition: UIPoint? by lazy {
+    private val bottomPosition: XmlPoint? by lazy {
         getForcedPosition(AnchorPoint.BOTTOM)
     }
 
     @delegate:Transient
-    private val bottomLeftPosition: UIPoint? by lazy {
+    private val bottomLeftPosition: XmlPoint? by lazy {
         getForcedPosition(AnchorPoint.BOTTOMLEFT)
     }
 
     @delegate:Transient
-    private val leftPosition: UIPoint? by lazy {
+    private val leftPosition: XmlPoint? by lazy {
         getForcedPosition(AnchorPoint.LEFT)
     }
 
-    private fun getForcedPosition(anchorPoint: AnchorPoint): UIPoint? {
+    private fun getForcedPosition(anchorPoint: AnchorPoint): XmlPoint? {
         val anchor = getAnchor(anchorPoint) ?: return null
         val anchorSize = parseDimension(anchor.relDimension, anchor.absDimension)
         val relativeContainer = getRelativeContainer(anchor)
@@ -129,14 +129,14 @@ data class Container(
         return relativePosition.transpose(anchorSize)
     }
 
-    private fun parseDimension(relDimension: Dimension, absDimension: Dimension): UIPoint {
+    private fun parseDimension(relDimension: Dimension, absDimension: Dimension): XmlPoint {
         val x = if (relDimension.x.isNotEmpty()) {
             relDimension.x.toFloat() * parentContainer.size.x
         } else absDimension.x.toFloatOrNull() ?: 0.0f
         val y = if (relDimension.y.isNotEmpty()) {
             relDimension.y.toFloat() * parentContainer.size.y
         } else absDimension.y.toFloatOrNull() ?: 0.0f
-        return UIPoint(x, y)
+        return XmlPoint(x, y)
     }
 
     private fun getAnchor(anchorPoint: AnchorPoint): Anchor? {
@@ -147,16 +147,16 @@ data class Container(
         return validAnchors.firstOrNull()
     }
 
-    private fun getPosition(anchorPoint: AnchorPoint): UIPoint {
+    private fun getPosition(anchorPoint: AnchorPoint): XmlPoint {
         val positionsByAnchorPoint = getNonNullPositionsByAnchorPoint()
         positionsByAnchorPoint[anchorPoint]?.let { return it }
         val refAnchorPointWithPosition = positionsByAnchorPoint.toList().firstOrNull()
-            ?: (AnchorPoint.TOPLEFT to UIPoint())
+            ?: (AnchorPoint.TOPLEFT to XmlPoint())
         val refAnchorPoint = refAnchorPointWithPosition.first
         val refPosition = refAnchorPointWithPosition.second
         val widthRatio = refAnchorPoint.widthRatio - anchorPoint.widthRatio
         val heightRatio = refAnchorPoint.heightRatio - anchorPoint.heightRatio
-        return UIPoint(refPosition.x - widthRatio * size.x, refPosition.y - heightRatio * size.y)
+        return XmlPoint(refPosition.x - widthRatio * size.x, refPosition.y - heightRatio * size.y)
     }
 
     private fun computeWidthWithAnchors(): Float? {
@@ -168,7 +168,7 @@ data class Container(
     }
 
     private fun computeSideWithAnchors(
-        anchorRatioGetter: (AnchorPoint) -> Float, sideLengthGetter: (UIPoint) -> Float
+        anchorRatioGetter: (AnchorPoint) -> Float, sideLengthGetter: (XmlPoint) -> Float
     ): Float? {
         val positionsByAnchorPoint = getNonNullPositionsByAnchorPoint()
         val firstAnchorPointWithPosition = positionsByAnchorPoint.toList().firstOrNull() ?: return null
@@ -183,14 +183,14 @@ data class Container(
         return (sideLengthGetter(firstPosition) - sideLengthGetter(secondPosition)) / deltaRatio
     }
 
-    private fun computeSizeUsingChildren(): UIPoint? {
+    private fun computeSizeUsingChildren(): XmlPoint? {
         val sizes = children.map { computeChildSize(it) }
         val childMaxWidth = sizes.maxOfOrNull { it.x } ?: return null
         val childMaxHeight = sizes.maxOfOrNull { it.y } ?: return null
-        return UIPoint(childMaxWidth, childMaxHeight)
+        return XmlPoint(childMaxWidth, childMaxHeight)
     }
 
-    private fun computeChildSize(child: Container): UIPoint {
+    private fun computeChildSize(child: Container): XmlPoint {
         val childSize = child.fixedSize
             ?: child.computeSizeUsingChildren()
             ?: child.computeIconSize()
@@ -218,15 +218,15 @@ data class Container(
             val heightDelta = (1f - anchorPoint.heightRatio) * childSize.y
             margin - heightDelta
         } ?: 0.0f
-        return UIPoint(childSize.x + marginLeft + marginRight, childSize.y + marginBottom + marginTop)
+        return XmlPoint(childSize.x + marginLeft + marginRight, childSize.y + marginBottom + marginTop)
     }
 
-    private fun computeIconSize(): UIPoint {
+    private fun computeIconSize(): XmlPoint {
         return UIIconManager.getIconSize(this)
-            ?: UIPoint(24f, 24f)
+            ?: XmlPoint(24f, 24f)
     }
 
-    private fun getNonNullPositionsByAnchorPoint(): Map<AnchorPoint, UIPoint> {
+    private fun getNonNullPositionsByAnchorPoint(): Map<AnchorPoint, XmlPoint> {
         return listOf(
             AnchorPoint.CENTER to centerPosition,
             AnchorPoint.TOPLEFT to topLeftPosition,

@@ -30,4 +30,12 @@ object ExplorationRecordManager : ToInitManager {
             explorationRecord[mapId] = System.currentTimeMillis()
         }
     }
+
+    fun clearExploreMaps(mapIds: List<Double>) = lock.executeSyncOperation {
+        fileManager.updateStore { explorationRecord ->
+            mapIds.forEach {
+                explorationRecord.remove(it)
+            }
+        }
+    }
 }

@@ -1,8 +1,8 @@
 package fr.lewon.dofus.bot.core.ui.managers
 
-import fr.lewon.dofus.bot.core.ui.UIBounds
-import fr.lewon.dofus.bot.core.ui.UIPoint
 import fr.lewon.dofus.bot.core.ui.dat.DatUtil
+import fr.lewon.dofus.bot.core.ui.geometry.xml.XmlBounds
+import fr.lewon.dofus.bot.core.ui.geometry.xml.XmlPoint
 import fr.lewon.dofus.bot.core.ui.xml.containers.Container
 
 enum class DofusUIElement(
@@ -32,8 +32,8 @@ enum class DofusUIElement(
         private const val CONTEXT_DEFAULT = "default"
         private const val CONTEXT_FIGHT = "fight"
 
-        private fun getUIPoint(keyRegex: String): UIPoint? {
-            val uiPointByKey = DatUtil.getDatFileContent("Berilia_ui_positions", DofusUIPointByKey::class.java)
+        private fun getXmlPoint(keyRegex: String): XmlPoint? {
+            val uiPointByKey = DatUtil.getDatFileContent("Berilia_ui_positions", DofusXmlPointByKey::class.java)
                 ?: error("Couldn't get UI position : $keyRegex")
             return uiPointByKey.entries.firstOrNull { it.key.matches(Regex(keyRegex)) }?.value
         }
@@ -42,14 +42,14 @@ enum class DofusUIElement(
             return entries.any { it.xmlFileName == xmlFileName }
         }
 
-        private class DofusUIPointByKey : HashMap<String, UIPoint?>()
+        private class DofusXmlPointByKey : HashMap<String, XmlPoint?>()
     }
 
-    fun getPosition(fightContext: Boolean = false): UIPoint {
+    fun getPosition(fightContext: Boolean = false): XmlPoint {
         return getContainer(fightContext).bounds.position
     }
 
-    fun getSize(fightContext: Boolean = false): UIPoint {
+    fun getSize(fightContext: Boolean = false): XmlPoint {
         return getContainer(fightContext).bounds.size
     }
 
@@ -57,22 +57,22 @@ enum class DofusUIElement(
         val uiDefinition = XmlUiUtil.getUIDefinition(xmlFileName)
         val container = uiDefinition.children.firstOrNull { it.name.matches(Regex(ctr)) }
             ?: uiDefinition.children[0]
-        container.defaultSize = getUIPoint(buildSizeKey(fightContext))
+        container.defaultSize = getXmlPoint(buildSizeKey(fightContext))
         XmlContainerInitializer.initAll(container)
-        val overriddenPosition = getUIPoint(buildPosKey(fightContext))
+        val overriddenPosition = getXmlPoint(buildPosKey(fightContext))
         val positionDelta = if (overriddenPosition != null) {
             positionOverrideType.getResultPosition(container.bounds.position, overriddenPosition)
                 .transpose(container.bounds.position.invert())
         } else if (uiDefinition.fullscreen) {
-            UIPoint(UIBounds.MARGIN_WIDTH).invert()
+            XmlPoint(XmlBounds.MARGIN_WIDTH).invert()
         } else {
-            UIPoint(0f, 0f)
+            XmlPoint(0f, 0f)
         }
         updatePosition(container, positionDelta)
         return container
     }
 
-    private fun updatePosition(container: Container, positionDelta: UIPoint) {
+    private fun updatePosition(container: Container, positionDelta: XmlPoint) {
         container.bounds.position = container.bounds.position.transpose(positionDelta)
         container.children.forEach {
             updatePosition(it, positionDelta)
@@ -92,14 +92,14 @@ enum class DofusUIElement(
         return "$key##$infoType##$ctr##$context"
     }
 
-    private enum class OverrideType(private val resultPositionCalculator: (UIPoint, UIPoint) -> UIPoint) {
+    private enum class OverrideType(private val resultPositionCalculator: (XmlPoint, XmlPoint) -> XmlPoint) {
 
         ADD_OVERRIDE({ basePosition, overriddenPosition -> basePosition.transpose(overriddenPosition) }),
         REPLACE({ _, overriddenPosition -> overriddenPosition }),
         NO_OVERRIDE({ basePosition, _ -> basePosition })
         ;
 
-        fun getResultPosition(basePosition: UIPoint, overriddenPosition: UIPoint): UIPoint {
+        fun getResultPosition(basePosition: XmlPoint, overriddenPosition: XmlPoint): XmlPoint {
             return resultPositionCalculator(basePosition, overriddenPosition)
         }
     }

@@ -1,6 +1,5 @@
 package fr.lewon.dofus.bot.core.model.spell
 
-import fr.lewon.dofus.bot.core.VldbCoreInitializer
 import fr.lewon.dofus.bot.core.fighter.IDofusFighter
 
 data class DofusSpellTarget(val type: DofusSpellTargetType, val id: Int?, val casterOverwriteTarget: Boolean) {
@@ -14,7 +13,7 @@ data class DofusSpellTarget(val type: DofusSpellTargetType, val id: Int?, val ca
                 val key = if (casterOverwriteTarget) subMask[1] else subMask[0]
                 val idOffset = if (casterOverwriteTarget) 2 else 1
                 val type = DofusSpellTargetType.fromKey(key)
-                    ?: if (VldbCoreInitializer.DEBUG) error("Invalid target : $subMask ($targetMask)") else continue
+                    ?: continue
                 val target = DofusSpellTarget(
                     type = type,
                     id = subMask.substring(idOffset).toIntOrNull(),

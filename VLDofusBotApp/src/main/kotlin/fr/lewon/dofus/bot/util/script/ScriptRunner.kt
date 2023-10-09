@@ -49,12 +49,13 @@ object ScriptRunner : ListenableByCharacter<ScriptRunnerListener>(), CharacterMa
                 val script = scriptBuilder.buildScript()
                 script.execute(logItem, gameInfo, parameterValues, stats)
                 onScriptOk(character, logItem)
-            } catch (e: InterruptedException) {
-                onScriptCanceled(character, logItem)
-            } catch (e: IllegalMonitorStateException) {
-                onScriptCanceled(character, logItem)
-            } catch (t: Throwable) {
-                onScriptKo(character, t, logItem)
+            } catch (e: Throwable) {
+                when (e) {
+                    is ThreadDeath,
+                    is InterruptedException,
+                    is IllegalMonitorStateException -> onScriptCanceled(character, logItem)
+                    else -> onScriptKo(character, e, logItem)
+                }
             }
         }
         val runningScript = RunningScript(scriptBuilder, thread, stats)
@@ -89,7 +90,7 @@ object ScriptRunner : ListenableByCharacter<ScriptRunnerListener>(), CharacterMa
 
     @Synchronized
     fun stopScript(characterName: String) {
-        RUNNING_SCRIPT_BY_CHARACTER_NAME.remove(characterName)?.thread?.interrupt()
+        RUNNING_SCRIPT_BY_CHARACTER_NAME.remove(characterName)?.thread?.stop()
     }
 
     private fun onScriptKo(character: DofusCharacter, t: Throwable, logItem: LogItem) {

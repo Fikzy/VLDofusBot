@@ -19,6 +19,7 @@ abstract class BooleanDofusBotTask : DofusBotTask<Boolean>() {
         } catch (e: Throwable) {
             when (e) {
                 is DofusBotTaskFatalException,
+                is ThreadDeath,
                 is InterruptedException,
                 is IllegalMonitorStateException ->
                     throw e

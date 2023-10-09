@@ -5,6 +5,7 @@ import fr.lewon.dofus.bot.core.ui.xml.containers.Container
 import fr.lewon.dofus.bot.overlay.AbstractOverlay
 import fr.lewon.dofus.bot.overlay.AbstractOverlayPanel
 import fr.lewon.dofus.bot.util.io.toRectangleAbsolute
+import fr.lewon.dofus.bot.util.io.toRectangleRelative
 import fr.lewon.dofus.bot.util.network.info.GameInfo
 import java.awt.Color
 import java.awt.Graphics
@@ -27,7 +28,13 @@ object UIOverlay : AbstractOverlay() {
     }
 
     override fun buildOverlayBounds(): Rectangle {
-        return gameInfo.completeBounds
+        val gameBounds = gameInfo.gameBounds
+        return Rectangle(
+            0,
+            gameBounds.y,
+            gameBounds.x * 2 + gameBounds.width,
+            gameBounds.height
+        )
     }
 
     override fun updateOverlay(gameInfo: GameInfo) {
@@ -66,7 +73,7 @@ object UIOverlay : AbstractOverlay() {
         }
 
         private fun addRectangles(container: Container) {
-            val rectAbs = container.bounds.toRectangleAbsolute(gameInfo)
+            val rectAbs = container.bounds.toRectangleRelative().toRectangleAbsolute(gameInfo)
             toDrawRectangles.add(container to Rectangle(rectAbs.x, rectAbs.y, rectAbs.width, rectAbs.height))
             for (subContainer in container.children) {
                 addRectangles(subContainer)

@@ -14,6 +14,7 @@ import fr.lewon.dofus.bot.sniffer.model.messages.game.context.roleplay.MapComple
 import fr.lewon.dofus.bot.sniffer.model.types.game.context.roleplay.*
 import fr.lewon.dofus.bot.sniffer.store.IEventHandler
 import fr.lewon.dofus.bot.util.filemanagers.impl.GlobalConfigManager
+import fr.lewon.dofus.bot.util.listeners.OverlayManager
 import fr.lewon.dofus.bot.util.network.GameSnifferUtil
 import fr.lewon.dofus.bot.util.network.info.GameInfo
 import fr.lewon.dofus.bot.util.script.ScriptRunner
@@ -62,6 +63,7 @@ abstract class AbstractMapComplementaryInformationsDataEventHandler<T : MapCompl
         }
         beepIfSpecialMonsterHere(gameInfo, map)
         CharactersUIUtil.updateMap(gameInfo.character, map)
+        OverlayManager.updateDisplayedOverlay(gameInfo)
     }
 
     private fun beepIfSpecialMonsterHere(gameInfo: GameInfo, map: DofusMap) {

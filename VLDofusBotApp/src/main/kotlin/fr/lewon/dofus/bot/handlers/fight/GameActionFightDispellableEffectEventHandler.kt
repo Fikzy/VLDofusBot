@@ -13,12 +13,14 @@ object GameActionFightDispellableEffectEventHandler : IEventHandler<GameActionFi
         val gameInfo = GameSnifferUtil.getGameInfoByConnection(connection)
         val fighter = gameInfo.fightBoard.getOrCreateFighterById(socketResult.effect.targetId)
         if (socketResult.actionId == DofusSpellEffectType.ADD_STATE.id) {
-            val effect = socketResult.effect as FightTemporaryBoostStateEffect
-            fighter.addStateBuff(
-                uid = effect.uid.toString(),
-                turnDuration = effect.turnDuration,
-                stateId = effect.stateId
-            )
+            val effect = socketResult.effect
+            if (effect is FightTemporaryBoostStateEffect) {
+                fighter.addStateBuff(
+                    uid = effect.uid.toString(),
+                    turnDuration = effect.turnDuration,
+                    stateId = effect.stateId
+                )
+            }
         }
     }
 }

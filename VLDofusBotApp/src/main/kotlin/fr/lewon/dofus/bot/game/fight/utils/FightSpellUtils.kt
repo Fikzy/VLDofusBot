@@ -11,7 +11,6 @@ import fr.lewon.dofus.bot.game.fight.FightBoard
 import fr.lewon.dofus.bot.game.fight.fighter.Fighter
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
 
 object FightSpellUtils {
 
@@ -24,14 +23,13 @@ object FightSpellUtils {
         val effectTypes = spell.effects.map { it.effectType }
         val isMovingSpell = (effectTypes.contains(DofusSpellEffectType.TELEPORT)
             || effectTypes.contains(DofusSpellEffectType.DASH)) && !spell.needTakenCell
-        val isSummonSpell = effectTypes.contains(DofusSpellEffectType.SUMMON_CREATURE)
+        val isSummonSpell = effectTypes.contains(DofusSpellEffectType.SUMMON_CREATURE) && !spell.needTakenCell
         val rawTargetCells = getRawSpellTargetCells(dofusBoard, casterFighter, spell)
         if (isMovingSpell) {
             return rawTargetCells.filter { it.isAccessible() }.map { it.cellId }
         }
         if (isSummonSpell) {
-            val maxRange = min(spell.minRange + 1, getSpellMaxRange(spell, casterFighter))
-            return getCellsInLine(dofusBoard, casterFighter.cell, spell.minRange, maxRange).map { it.cellId }
+            return rawTargetCells.filter { it.isAccessible() }.map { it.cellId }
         }
         val rawTargetCellIds = rawTargetCells.map { it.cellId }
         val fighterCellIds = getAffectedFighters(fightBoard, casterFighter, spell.effects)

@@ -37,11 +37,12 @@ open class DefaultFightAI(dofusBoard: DofusBoard, aiComplement: AIComplement) : 
 
         val maxTimeMillis = 1800
         val minTimeMillis = 800
+        var newPopulationMultiplier = 3
         while (frontier.isNotEmpty() && System.currentTimeMillis() - startTime < maxTimeMillis) {
             val nodesToExplore = if (frontier.size < 100) {
                 frontier.toList()
             } else {
-                selectNodesToExplore(frontier, 200)
+                selectNodesToExplore(frontier, (newPopulationMultiplier++) * 100)
             }
             for (node in nodesToExplore) {
                 frontier.remove(node)

@@ -4,7 +4,7 @@ import fr.lewon.dofus.bot.core.d2o.managers.map.MapManager
 import fr.lewon.dofus.bot.core.d2p.maps.cell.CellData
 import fr.lewon.dofus.bot.core.logs.LogItem
 import fr.lewon.dofus.bot.core.model.move.Direction
-import fr.lewon.dofus.bot.core.ui.UIPoint
+import fr.lewon.dofus.bot.core.ui.geometry.ui.UIPoint
 import fr.lewon.dofus.bot.core.world.Transition
 import fr.lewon.dofus.bot.core.world.TransitionType
 import fr.lewon.dofus.bot.game.DofusBoard
@@ -40,14 +40,21 @@ class MoveTask(
         val itemIdsToHarvest = HarvestableSetsManager.getItemsToHarvest(gameInfo.character.parameters.harvestableSet)
         for ((i, transition) in transitions.withIndex()) {
             gameInfo.logger.closeLog("[${getTransitionDescription(transition)}] $i/${transitions.size}", logItem, true)
-            if (harvestEnabled && itemIdsToHarvest.isNotEmpty()) {
-                HarvestAllResourcesTask().run(logItem, gameInfo)
-            }
+            harvestIfNeeded(logItem, gameInfo, itemIdsToHarvest)
             if (!processTransition(gameInfo, logItem, transition)) {
                 return false
             }
         }
+        harvestIfNeeded(logItem, gameInfo, itemIdsToHarvest)
         return true
+    }
+
+    private fun harvestIfNeeded(logItem: LogItem, gameInfo: GameInfo, itemIdsToHarvest: List<Double>) {
+        if (harvestEnabled && itemIdsToHarvest.isNotEmpty()) {
+            if (!HarvestAllResourcesTask().run(logItem, gameInfo)) {
+                error("Couldn't harvest resources")
+            }
+        }
     }
 
     private fun getTransitionDescription(transition: Transition): String {

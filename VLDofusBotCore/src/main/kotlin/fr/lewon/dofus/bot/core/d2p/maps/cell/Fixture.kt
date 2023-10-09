@@ -1,7 +1,7 @@
 package fr.lewon.dofus.bot.core.d2p.maps.cell
 
 import fr.lewon.dofus.bot.core.io.stream.ByteArrayReader
-import fr.lewon.dofus.bot.core.ui.UIPoint
+import fr.lewon.dofus.bot.core.ui.geometry.ui.UIPoint
 
 class Fixture {
 

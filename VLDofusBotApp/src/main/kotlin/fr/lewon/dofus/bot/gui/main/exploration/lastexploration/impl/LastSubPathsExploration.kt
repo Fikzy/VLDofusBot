@@ -23,11 +23,15 @@ class LastSubPathsExploration(progressBySubPath: Map<SubPath, ExplorationProgres
             ExploreMapsScriptBuilder.explorationTypeParameter,
             ExploreMapsScriptBuilder.ExplorationType.Path
         )
-        val pathName = getItemsToExploreAgain().firstOrNull()?.pathName
-        if (pathName != null) {
+        val subPath = getItemsToExploreAgain().firstOrNull()
+        if (subPath != null) {
             parameterValues.updateParamValue(
                 ExploreMapsScriptBuilder.pathParameter,
-                MapsPathsManager.getPathByName()[pathName]
+                MapsPathsManager.getPathByName()[subPath.pathName]
+            )
+            parameterValues.updateParamValue(
+                ExploreMapsScriptBuilder.itemIdToResumeOnParameter,
+                subPath.id
             )
         }
     }

@@ -1,8 +1,11 @@
 package fr.lewon.dofus.bot.util.io
 
-import fr.lewon.dofus.bot.core.ui.UIBounds
-import fr.lewon.dofus.bot.core.ui.UIPoint
-import fr.lewon.dofus.bot.core.ui.UIRectangle
+import fr.lewon.dofus.bot.core.ui.geometry.ui.UIBounds
+import fr.lewon.dofus.bot.core.ui.geometry.ui.UIPoint
+import fr.lewon.dofus.bot.core.ui.geometry.ui.UIRectangle
+import fr.lewon.dofus.bot.core.ui.geometry.xml.XmlBounds
+import fr.lewon.dofus.bot.core.ui.geometry.xml.XmlPoint
+import fr.lewon.dofus.bot.core.ui.geometry.xml.XmlRectangle
 import fr.lewon.dofus.bot.util.geometry.PointAbsolute
 import fr.lewon.dofus.bot.util.geometry.PointRelative
 import fr.lewon.dofus.bot.util.geometry.RectangleAbsolute
@@ -20,8 +23,15 @@ object ConverterUtil {
 
     fun toPointRelative(point: UIPoint): PointRelative {
         return PointRelative(
-            point.x / UIBounds.TOTAL_WIDTH,
+            (point.x) / (UIBounds.TOTAL_WIDTH),
             point.y / UIBounds.TOTAL_HEIGHT
+        )
+    }
+
+    fun toPointRelative(point: XmlPoint): PointRelative {
+        return PointRelative(
+            point.x / XmlBounds.TOTAL_WIDTH,
+            point.y / XmlBounds.TOTAL_HEIGHT
         )
     }
 
@@ -35,7 +45,6 @@ object ConverterUtil {
     fun toUIPoint(gameInfo: GameInfo, point: PointAbsolute): UIPoint {
         return point.toPointRelative(gameInfo).toUIPoint()
     }
-
 
     fun toPointRelative(gameInfo: GameInfo, point: PointAbsolute): PointRelative {
         val x = (point.x - gameInfo.gameBounds.x).toFloat() / gameInfo.gameBounds.width.toFloat()
@@ -76,6 +85,12 @@ object ConverterUtil {
         return RectangleRelative.build(topLeftPosition.toPointRelative(), bottomRightPosition.toPointRelative())
     }
 
+    fun toRectangleRelative(rect: XmlRectangle): RectangleRelative {
+        val topLeftPosition = rect.position
+        val bottomRightPosition = rect.position.transpose(rect.size)
+        return RectangleRelative.build(topLeftPosition.toPointRelative(), bottomRightPosition.toPointRelative())
+    }
+
     fun toRectangleAbsolute(gameInfo: GameInfo, rect: UIRectangle): RectangleAbsolute {
         val topLeftAbs = rect.position.toPointAbsolute(gameInfo)
         val bottomRightUIPoint = UIPoint(rect.position.x + rect.size.x, rect.position.y + rect.size.y)
@@ -87,6 +102,7 @@ object ConverterUtil {
 
 fun UIPoint.toPointAbsolute(gameInfo: GameInfo) = ConverterUtil.toPointAbsolute(gameInfo, this)
 fun UIPoint.toPointRelative() = ConverterUtil.toPointRelative(this)
+fun XmlPoint.toPointRelative() = ConverterUtil.toPointRelative(this)
 fun PointRelative.toUIPoint() = ConverterUtil.toUIPoint(this)
 fun PointAbsolute.toUIPoint(gameInfo: GameInfo) = ConverterUtil.toUIPoint(gameInfo, this)
 fun PointAbsolute.toPointRelative(gameInfo: GameInfo) = ConverterUtil.toPointRelative(gameInfo, this)
@@ -94,4 +110,5 @@ fun PointRelative.toPointAbsolute(gameInfo: GameInfo) = ConverterUtil.toPointAbs
 fun RectangleAbsolute.toRectangleRelative(gameInfo: GameInfo) = ConverterUtil.toRectangleRelative(gameInfo, this)
 fun RectangleRelative.toRectangleAbsolute(gameInfo: GameInfo) = ConverterUtil.toRectangleAbsolute(gameInfo, this)
 fun UIRectangle.toRectangleRelative() = ConverterUtil.toRectangleRelative(this)
+fun XmlRectangle.toRectangleRelative() = ConverterUtil.toRectangleRelative(this)
 fun UIRectangle.toRectangleAbsolute(gameInfo: GameInfo) = ConverterUtil.toRectangleAbsolute(gameInfo, this)

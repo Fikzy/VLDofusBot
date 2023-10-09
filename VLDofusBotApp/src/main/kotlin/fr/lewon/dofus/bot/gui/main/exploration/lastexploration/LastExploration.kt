@@ -2,9 +2,7 @@ package fr.lewon.dofus.bot.gui.main.exploration.lastexploration
 
 import fr.lewon.dofus.bot.model.characters.parameters.ParameterValues
 
-abstract class LastExploration<T>(
-    val progressByItem: Map<T, ExplorationProgress> = emptyMap(),
-) {
+abstract class LastExploration<T>(val progressByItem: Map<T, ExplorationProgress> = emptyMap()) {
 
     var explorationStopped: Boolean = false
 

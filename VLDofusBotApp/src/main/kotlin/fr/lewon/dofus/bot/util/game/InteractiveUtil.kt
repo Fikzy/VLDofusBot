@@ -8,8 +8,10 @@ import fr.lewon.dofus.bot.core.d2p.gfx.D2PWorldGfxAdapter
 import fr.lewon.dofus.bot.core.d2p.maps.cell.CompleteCellData
 import fr.lewon.dofus.bot.core.d2p.maps.element.GraphicalElement
 import fr.lewon.dofus.bot.core.d2p.sprite.D2PBonesSpriteAdapter
-import fr.lewon.dofus.bot.core.ui.UIPoint
-import fr.lewon.dofus.bot.core.ui.UIRectangle
+import fr.lewon.dofus.bot.core.d2p.sprite.DefineSprite
+import fr.lewon.dofus.bot.core.ui.geometry.ui.UIPoint
+import fr.lewon.dofus.bot.core.ui.geometry.ui.UIRectangle
+import fr.lewon.dofus.bot.game.DofusCell
 import fr.lewon.dofus.bot.sniffer.model.messages.game.context.GameCautiousMapMovementRequestMessage
 import fr.lewon.dofus.bot.sniffer.model.messages.game.context.GameMapMovementRequestMessage
 import fr.lewon.dofus.bot.sniffer.model.messages.game.interactive.InteractiveUseRequestMessage
@@ -45,44 +47,13 @@ object InteractiveUtil {
 
     private val INVALID_SKILL_IDS = listOf(339, 360, 361, 362)
 
+    private val MinClickPoint = PointRelative(0.03f, 0.018f).toUIPoint()
+    private val MaxClickPoint = PointRelative(0.97f, 0.875f).toUIPoint()
+
     fun getElementCellData(gameInfo: GameInfo, interactiveElement: InteractiveElement): CompleteCellData =
         gameInfo.mapData.completeCellDataByCellId.values
             .firstOrNull { it.graphicalElements.map { ge -> ge.identifier }.contains(interactiveElement.elementId) }
             ?: error("No cell data found for element : ${interactiveElement.elementId}")
-
-    fun getInteractiveElement(gameInfo: GameInfo, elementId: Int): InteractiveElement =
-        gameInfo.interactiveElements.firstOrNull { it.elementId == elementId }
-            ?: error("Element not found on map : $elementId")
-
-    fun getInteractiveBounds(gameInfo: GameInfo, elementId: Int): RectangleAbsolute {
-        val interactiveElement = getInteractiveElement(gameInfo, elementId)
-        val destCellCompleteData = getElementCellData(gameInfo, interactiveElement)
-        val graphicalElement = destCellCompleteData.graphicalElements
-            .firstOrNull { it.identifier == interactiveElement.elementId }
-            ?: error("No graphical element found for element : ${interactiveElement.elementId}")
-
-        val elementData = D2PElementsAdapter.getElement(graphicalElement.elementId)
-        val bounds = getRawInteractiveBounds(gameInfo, destCellCompleteData, elementData, graphicalElement)
-        val boundsCropDelta = getBoundsCropDelta(bounds)
-        return cropBounds(bounds, boundsCropDelta).toRectangleAbsolute(gameInfo)
-    }
-
-    fun getInteractiveGfx(gameInfo: GameInfo, elementId: Int): BufferedImage? {
-        val interactiveElement = getInteractiveElement(gameInfo, elementId)
-        val destCellCompleteData = getElementCellData(gameInfo, interactiveElement)
-        val graphicalElement = destCellCompleteData.graphicalElements
-            .firstOrNull { it.identifier == interactiveElement.elementId }
-            ?: error("No graphical element found for element : ${interactiveElement.elementId}")
-
-        val elementData = D2PElementsAdapter.getElement(graphicalElement.elementId)
-        return when (elementData) {
-            is EntityGraphicalElementData -> {
-                val boneId = elementData.entityLook.substring(1, elementData.entityLook.length - 1).toInt()
-                D2PBonesSpriteAdapter.getBoneSprite(boneId.toDouble())?.getImage(elementData.horizontalSymmetry)
-            }
-            else -> null
-        }
-    }
 
     private fun cropBounds(bounds: UIRectangle, boundsCropDelta: UIRectangleDelta): UIRectangle {
         return UIRectangle(
@@ -104,17 +75,15 @@ object InteractiveUtil {
     )
 
     private fun getBoundsCropDelta(bounds: UIRectangle): UIRectangleDelta {
-        val minPoint = PointRelative(0.03f, 0.018f).toUIPoint()
-        val maxPoint = PointRelative(0.97f, 0.88f).toUIPoint()
         return UIRectangleDelta(
-            leftDelta = max(0f, minPoint.x - bounds.position.x),
-            rightDelta = max(0f, bounds.position.x + bounds.size.x - maxPoint.x),
-            topDelta = max(0f, minPoint.y - bounds.position.y),
-            bottomDelta = max(0f, bounds.position.y + bounds.size.y - maxPoint.y),
+            leftDelta = max(0f, MinClickPoint.x - bounds.position.x),
+            rightDelta = max(0f, bounds.position.x + bounds.size.x - MaxClickPoint.x),
+            topDelta = max(0f, MinClickPoint.y - bounds.position.y),
+            bottomDelta = max(0f, bounds.position.y + bounds.size.y - MaxClickPoint.y),
         )
     }
 
-    private fun getRawInteractiveBounds(
+    fun getRawInteractiveBounds(
         gameInfo: GameInfo,
         destCellCompleteData: CompleteCellData,
         elementData: GraphicalElementData,
@@ -122,110 +91,132 @@ object InteractiveUtil {
     ): UIRectangle {
         val destCellId = destCellCompleteData.cellId
         val cell = gameInfo.dofusBoard.getCell(destCellId)
-        val dToOrigin: UIPoint
-        val size: UIPoint
-        when {
-            elementData is NormalGraphicalElementData && (graphicalElement.altitude < 50 || cell.cellData.floor != 0) -> {
-                dToOrigin = elementData.origin
-                size = elementData.size
-            }
-            elementData is EntityGraphicalElementData -> {
-                val boneId = elementData.entityLook.substring(1, elementData.entityLook.length - 1).toInt()
-                /* TODO: implement EntityLookParser / TiphonEntityLook?
-                 *       Maybe not useful, we only encounter the simple `{boneId}` format */
-                val boneSprite = D2PBonesSpriteAdapter.getBoneSprite(boneId.toDouble())
-                if (boneSprite != null) {
-                    val rect = boneSprite.getBounds(elementData.horizontalSymmetry)
-                    size = rect.size
-                    dToOrigin = rect.position.invert()
-                } else {
-                    println("Bone (#$boneId) sprite not found, defaulting to cell bounds")
-                    val topLeft = cell.bounds.getTopLeft().toUIPoint()
-                    val bottomRight = cell.bounds.getBottomRight().toUIPoint()
-                    size = UIPoint(bottomRight.x - topLeft.x, bottomRight.y - topLeft.y)
-                    dToOrigin = UIPoint(size.x / 2f, size.y / 2f)
-                }
-            }
-            else -> {
-                val topLeft = cell.bounds.getTopLeft().toUIPoint()
-                val bottomRight = cell.bounds.getBottomRight().toUIPoint()
-                size = UIPoint(bottomRight.x - topLeft.x, bottomRight.y - topLeft.y)
-                dToOrigin = UIPoint(size.x / 2f, size.y / 2f)
-            }
-        }
-        val altitudeYOffset = if (graphicalElement.altitude < 50) {
-            -graphicalElement.altitude * 10
-        } else if (cell.cellData.floor != 0) {
-            -cell.cellData.floor
-        } else 0
+        val elementBounds = getElementBounds(elementData, cell)
         val offset = UIPoint(
             x = graphicalElement.pixelOffset.x,
-            y = graphicalElement.pixelOffset.y + altitudeYOffset
+            y = graphicalElement.pixelOffset.y - graphicalElement.altitude * 10
         )
         val cellCenter = cell.getCenter().toUIPoint().transpose(offset)
-        val x = cellCenter.x - dToOrigin.x
-        val y = cellCenter.y - dToOrigin.y
-        return UIRectangle(UIPoint(x, y), size)
+        return UIRectangle(cellCenter.transpose(elementBounds.position), elementBounds.size)
+    }
+
+    private fun getElementBounds(elementData: GraphicalElementData, cell: DofusCell): UIRectangle = when (elementData) {
+        is NormalGraphicalElementData ->
+            UIRectangle(position = elementData.origin.invert(), size = elementData.size)
+        is EntityGraphicalElementData ->
+            getBoneSprite(elementData)?.getBounds(elementData.horizontalSymmetry) ?: getDefaultBounds(cell)
+        else -> getDefaultBounds(cell)
+    }
+
+    private fun getDefaultBounds(cell: DofusCell): UIRectangle {
+        val topLeft = cell.bounds.getTopLeft().toUIPoint()
+        val bottomRight = cell.bounds.getBottomRight().toUIPoint()
+        val size = UIPoint(bottomRight.x - topLeft.x, bottomRight.y - topLeft.y)
+        val position = UIPoint(-size.x / 2f, -size.y / 2f)
+        return UIRectangle(position, size)
+    }
+
+    private fun getBoneSprite(elementData: EntityGraphicalElementData): DefineSprite? {
+        val boneId = elementData.entityLook.substring(1, elementData.entityLook.length - 1).toInt()
+        return D2PBonesSpriteAdapter.getBoneSprite(boneId.toDouble())
     }
 
     fun getInteractivePotentialClickLocations(gameInfo: GameInfo, elementId: Int): List<PointAbsolute> {
-        val interactiveElement = getInteractiveElement(gameInfo, elementId)
+        val interactiveElement = gameInfo.interactiveElements.firstOrNull { it.elementId == elementId }
+            ?: error("Element not found on map : $elementId")
         val destCellCompleteData = getElementCellData(gameInfo, interactiveElement)
-        val graphicalElement = destCellCompleteData.graphicalElements
-            .firstOrNull { it.identifier == interactiveElement.elementId }
-            ?: error("No graphical element found for element : ${interactiveElement.elementId}")
+        val graphicalElement = destCellCompleteData.graphicalElements.firstOrNull {
+            it.identifier == interactiveElement.elementId
+        } ?: error("No graphical element found for element : ${interactiveElement.elementId}")
 
         val elementData = D2PElementsAdapter.getElement(graphicalElement.elementId)
         val rawBounds = getRawInteractiveBounds(gameInfo, destCellCompleteData, elementData, graphicalElement)
-        val boundsCropDelta = getBoundsCropDelta(rawBounds)
-        val realBounds = cropBounds(rawBounds, boundsCropDelta)
+        val cropDelta = getBoundsCropDelta(rawBounds)
+        val realBounds = cropBounds(rawBounds, cropDelta)
         getCustomClickLocations(elementId, realBounds.toRectangleAbsolute(gameInfo))?.let {
             return it
         }
-        val gfx = when (elementData) {
-            is NormalGraphicalElementData -> {
-                val gfxByteArray = D2PWorldGfxAdapter.getWorldGfxImageData(elementData.gfxId.toDouble())
-                ImageIO.read(ByteArrayInputStream(gfxByteArray))
-            }
-            is EntityGraphicalElementData -> {
-                val boneId = elementData.entityLook.substring(1, elementData.entityLook.length - 1).toInt()
-                val boneSprite = D2PBonesSpriteAdapter.getBoneSprite(boneId.toDouble())
-                boneSprite?.getImage(elementData.horizontalSymmetry)
-            }
-            else -> null
+        val clickLocations = getElementClickLocations(elementData, cropDelta).map {
+            rawBounds.position.transpose(it).toPointAbsolute(gameInfo)
+        }.filter {
+            val pointRelative = it.toPointRelative(gameInfo)
+            pointRelative.x in 0.03f..0.97f && pointRelative.y in 0.018f..0.88f
         }
-        val horizontalSymmetry = if (elementData is NormalGraphicalElementData) {
-            elementData.horizontalSymmetry
-        } else false
-        val size = realBounds.size
-        val clickDeltaLocations = gfx?.let {
-            GfxPointToCheck.getPoints(boundsCropDelta).filter {
-                val x = it.xPoint.getPoint(size.x) + boundsCropDelta.leftDelta
-                val y = it.yPoint.getPoint(size.y) + boundsCropDelta.topDelta
-                val realX = if (horizontalSymmetry) gfx.data.width - x else x
-                if (realX.toInt() <= gfx.width && y.toInt() <= gfx.height) {
-                    gfx.getRGB(realX.toInt(), y.toInt()) != 0
-                } else false
-            }.takeIf { it.isNotEmpty() }
-        } ?: listOf(GfxPointToCheck.TopCenter)
-        return clickDeltaLocations.map {
-            val x = it.xPoint.getPoint(size.x)
-            val y = it.yPoint.getPoint(size.y)
-            realBounds.position.transpose(UIPoint(x, y)).toPointAbsolute(gameInfo)
+        if (clickLocations.isEmpty()) {
+            val defaultClickLocation = UIPoint(
+                realBounds.position.x + realBounds.size.x / 2,
+                realBounds.position.y + realBounds.size.y / 3
+            ).toPointAbsolute(gameInfo)
+            return listOf(defaultClickLocation)
         }
+        return clickLocations
+    }
+
+    fun getInteractiveGfx(elementData: GraphicalElementData): BufferedImage? = when (elementData) {
+        is NormalGraphicalElementData -> {
+            val gfxByteArray = D2PWorldGfxAdapter.getWorldGfxImageData(elementData.gfxId.toDouble())
+            ImageIO.read(ByteArrayInputStream(gfxByteArray))
+        }
+        is EntityGraphicalElementData ->
+            getBoneSprite(elementData)?.getImage()
+        else -> null
+    }
+
+    fun isReversedHorizontally(elementData: GraphicalElementData): Boolean = when (elementData) {
+        is NormalGraphicalElementData -> elementData.horizontalSymmetry
+        is EntityGraphicalElementData -> elementData.horizontalSymmetry
+        else -> false
+    }
+
+    private fun getElementClickLocations(
+        elementData: GraphicalElementData,
+        cropDelta: UIRectangleDelta
+    ): List<UIPoint> {
+        val gfx = getInteractiveGfx(elementData)
+            ?: return emptyList()
+        val horizontalSymmetry = isReversedHorizontally(elementData)
+        val sectionsCountX = 18
+        val sectionsCountY = 12
+        val minX = cropDelta.leftDelta
+        val maxX = gfx.width - cropDelta.rightDelta
+        val width = maxOf(0f, maxX - minX)
+        val minY = cropDelta.topDelta
+        val maxY = gfx.height - cropDelta.bottomDelta
+        val height = maxOf(0f, maxY - minY)
+        val preSelectedClickLocations = (0..sectionsCountX).flatMap { sectionX ->
+            (0..sectionsCountY).map { sectionY ->
+                UIPoint(
+                    minX + width / 5f + sectionX.toFloat() / sectionsCountX * width * 3f / 5f,
+                    minY + height / 10f + sectionY.toFloat() / sectionsCountY * height / 2f,
+                )
+            }
+        }
+        val raster = gfx.raster
+        val numBands = raster.numBands
+        val delta = 3
+        val sideSize = (delta * 2 + 1)
+        val intArray = IntArray(sideSize * sideSize * numBands)
+        val validClickLocations = preSelectedClickLocations.filter { clickLocation ->
+            val xPos = clickLocation.x.toInt()
+            val yPos = clickLocation.y.toInt()
+            val realXPos = if (horizontalSymmetry) gfx.width - xPos else xPos
+            val rectXPos = realXPos - delta
+            val rectYPos = yPos - delta
+            if (rectXPos in 0..<gfx.width - sideSize && rectYPos in 0..<gfx.height - sideSize) {
+                raster.getPixels(rectXPos, rectYPos, sideSize, sideSize, intArray).all { it != 0 }
+            } else false
+        }
+        return validClickLocations
     }
 
     private fun getCustomClickLocations(elementId: Int, bounds: RectangleAbsolute) = when (elementId) {
         518476, // 20 ; -36
         -> listOf(bounds.getCenter().getSum(PointAbsolute(bounds.width / 3, 0)))
         485282, // -1 ; -42
-        522746, // -28 ; 35
-        484082, // -30; -11
+        510414, // -21 ; 22
         -> listOf(bounds.getCenter().getSum(PointAbsolute(bounds.width / 3, bounds.height / 3)))
-        523968, // -24 ; 39
         523592, // -23 ; 39
         -> listOf(bounds.getCenter())
-        515577, // 5 ; -17
         483927, // 22 ; 22
         -> listOf(bounds.getCenter().getSum(PointAbsolute(bounds.width / 3, -bounds.height / 3)))
         521652, // -36 ; -60
@@ -365,48 +356,4 @@ object InteractiveUtil {
         )
     }
 
-    private enum class GfxPointToCheck(val xPoint: UIXPoint, val yPoint: UIYPoint) {
-        TopLeft(UIXPoint.Left, UIYPoint.Top),
-        TopCenter(UIXPoint.Center, UIYPoint.Top),
-        TopRight(UIXPoint.Right, UIYPoint.Top),
-        CenterLeft(UIXPoint.Left, UIYPoint.Center),
-        Center(UIXPoint.Center, UIYPoint.Center),
-        CenterRight(UIXPoint.Right, UIYPoint.Center),
-        //BottomLeft(UIXPoint.Left, UIYPoint.Bottom),
-        //BottomCenter(UIXPoint.Center, UIYPoint.Bottom),
-        //BottomRight(UIXPoint.Right, UIYPoint.Bottom)
-        ;
-
-        companion object {
-
-            fun getPoints(boundsCropDelta: UIRectangleDelta): List<GfxPointToCheck> {
-                val points = entries.toMutableList()
-                if (boundsCropDelta.leftDelta > 0) {
-                    points.removeIf { it.xPoint == UIXPoint.Right }
-                }
-                if (boundsCropDelta.rightDelta > 0) {
-                    points.removeIf { it.xPoint == UIXPoint.Left }
-                }
-                if (boundsCropDelta.topDelta > 0) {
-                    points.removeIf { it.yPoint == UIYPoint.Bottom }
-                }
-                if (boundsCropDelta.bottomDelta > 0) {
-                    points.removeIf { it.yPoint == UIYPoint.Top }
-                }
-                return points
-            }
-        }
-    }
-
-    private enum class UIXPoint(val getPoint: (width: Float) -> Float) {
-        Left({ width -> width / 5 }),
-        Center({ width -> width / 2 }),
-        Right({ width -> width * 4 / 5 })
-    }
-
-    private enum class UIYPoint(val getPoint: (height: Float) -> Float) {
-        Top({ height -> height / 5 }),
-        Center({ height -> height / 2 }),
-        Bottom({ height -> height * 4 / 5 })
-    }
 }

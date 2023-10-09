@@ -19,8 +19,6 @@ import java.io.File
 
 object VldbCoreInitializer {
 
-    var DEBUG = false
-
     fun initAll(mapsDecryptionKey: String = "", mapsDecryptionKeyCharset: String = "") {
         processInitialization({ I18NUtil.init() }, "Initializing I18N ... ")
         processInitialization({ initAllD2O() }, "Initializing D2O ... ")
@@ -48,19 +46,17 @@ object VldbCoreInitializer {
         loadD2P(D2PWorldGfxAdapter, "${VldbFilesUtil.getDofusDirectory()}/content/gfx/world")
         loadD2P(D2PItemsGfxAdapter, "${VldbFilesUtil.getDofusDirectory()}/content/gfx/items")
         loadD2P(D2PMonstersGfxAdapter, "${VldbFilesUtil.getDofusDirectory()}/content/gfx/monsters")
-        loadD2P(D2PBonesSpriteAdapter, "${VldbFilesUtil.getDofusDirectory()}/content/gfx/sprites", Regex("bones.*\\.d2p"))
+        loadD2P(D2PBonesSpriteAdapter, "${VldbFilesUtil.getDofusDirectory()}/content/gfx/sprites", "bones.*\\.d2p")
     }
 
-    private fun loadD2P(d2pLoaderAdapter: AbstractD2PUrlLoaderAdapter, path: String) {
+    private fun loadD2P(
+        d2pLoaderAdapter: AbstractD2PUrlLoaderAdapter,
+        path: String,
+        fileNameRegexPattern: String = "\\.d2p"
+    ) {
+        val fileNameRegex = Regex(fileNameRegexPattern)
         File(path).listFiles()
-            ?.filter { it.absolutePath.endsWith(".d2p") }
-            ?.forEach { d2pLoaderAdapter.initStream(it.absolutePath) }
-            ?: error("D2P directory not found : $path}")
-    }
-
-    private fun loadD2P(d2pLoaderAdapter: AbstractD2PUrlLoaderAdapter, path: String, regex: Regex) {
-        File(path).listFiles()
-            ?.filter { it.name.contains(regex) }
+            ?.filter { it.absolutePath.endsWith(".d2p") && it.name.contains(fileNameRegex) }
             ?.forEach { d2pLoaderAdapter.initStream(it.absolutePath) }
             ?: error("D2P directory not found : $path}")
     }

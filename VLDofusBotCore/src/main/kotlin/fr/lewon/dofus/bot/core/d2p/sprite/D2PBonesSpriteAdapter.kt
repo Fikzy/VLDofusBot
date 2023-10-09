@@ -4,11 +4,20 @@ import com.jpexs.decompiler.flash.SWF
 import com.jpexs.decompiler.flash.tags.DefineSpriteTag
 import fr.lewon.dofus.bot.core.d2p.AbstractLinkedD2PUrlLoaderAdapter
 import fr.lewon.dofus.bot.core.d2p.D2PIndex
+import fr.lewon.dofus.bot.core.io.stream.ByteArrayReader
 import fr.lewon.dofus.bot.core.swl.SWL
+import java.io.File
 
-object D2PBonesSpriteAdapter : AbstractLinkedD2PUrlLoaderAdapter(true, -1) {
+object D2PBonesSpriteAdapter : AbstractLinkedD2PUrlLoaderAdapter(false, -1) {
 
-    private val cache = HashMap<Double, DefineSprite?>()
+    private const val CacheCapacity = 40
+
+    private val cache = object : LinkedHashMap<Double, DefineSprite?>(CacheCapacity, 0.75f, true) {
+
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Double, DefineSprite?>?): Boolean {
+            return size > CacheCapacity
+        }
+    }
 
     override fun getId(filePath: String): Double {
         return Regex("^(\\d+)\\.swl").find(filePath)?.destructured?.component1()?.toDouble()
@@ -16,12 +25,12 @@ object D2PBonesSpriteAdapter : AbstractLinkedD2PUrlLoaderAdapter(true, -1) {
     }
 
     @Synchronized
-    fun getBoneSprite(boneId: Double): DefineSprite? {
-        return cache.getOrPut(boneId) { deserialize(loadStream(boneId)) }
+    fun getBoneSprite(boneId: Double): DefineSprite? = cache.computeIfAbsent(boneId) {
+        deserialize(loadStream(boneId))
     }
 
     override fun doLoadStream(index: D2PIndex): ByteArray {
-        val fileStream = index.stream ?: error("Stream should be cached")
+        val fileStream = ByteArrayReader(File(index.filePath).readBytes())
         fileStream.setPosition(index.offset)
         return fileStream.readNBytes(index.length)
     }

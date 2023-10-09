@@ -5,6 +5,7 @@ import fr.lewon.dofus.bot.gui.main.characters.CharactersUIUtil
 import fr.lewon.dofus.bot.util.filemanagers.impl.CharacterManager
 import fr.lewon.dofus.bot.util.filemanagers.impl.GlobalConfigManager
 import fr.lewon.dofus.bot.util.network.GameSnifferUtil
+import fr.lewon.dofus.bot.util.network.info.GameInfo
 import java.util.concurrent.locks.ReentrantLock
 
 object OverlayManager {
@@ -36,6 +37,15 @@ object OverlayManager {
                 toToggleOverlay.overlay.isVisible = true
                 displayedOverlay = toToggleOverlay
             }
+        }
+    }
+
+    @Synchronized
+    fun updateDisplayedOverlay(gameInfo: GameInfo) {
+        try {
+            displayedOverlay?.overlay?.updateOverlay(gameInfo)
+        } catch (e: Throwable) {
+            e.printStackTrace()
         }
     }
 }

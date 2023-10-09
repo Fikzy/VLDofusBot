@@ -28,7 +28,7 @@ class ExploreSubAreaTask(
         alreadyExploredMaps: List<DofusMap>
     ) = ExplorationUIUtil.onExplorationStart(gameInfo.character, itemToExplore)
 
-    override fun getMapsToExplore(itemToExplore: DofusSubArea): List<DofusMap> = MapManager.getDofusMaps(itemToExplore)
+    override fun getMapsToExplore(): List<DofusMap> = MapManager.getDofusMaps(itemToExplore)
         .filter { it.worldMap != null || SUB_AREA_ID_FULLY_ALLOWED.contains(it.subArea.id) }
 
     override fun buildOnStartedMessage(itemToExplore: DofusSubArea): String =

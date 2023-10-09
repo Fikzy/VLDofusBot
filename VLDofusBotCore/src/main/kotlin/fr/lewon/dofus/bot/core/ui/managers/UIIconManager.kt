@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import fr.lewon.dofus.bot.core.ui.UIPoint
+import fr.lewon.dofus.bot.core.ui.geometry.xml.XmlPoint
 import fr.lewon.dofus.bot.core.ui.xml.containers.Container
 import java.io.File
 import javax.imageio.ImageIO
@@ -14,12 +14,12 @@ object UIIconManager {
     private val objectMapper = ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
         .enable(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES)
         .enable(JsonParser.Feature.ALLOW_COMMENTS)
-    private val sizeByIconName = HashMap<String, UIPoint>()
+    private val sizeByIconName = HashMap<String, XmlPoint>()
     private val globalThemeData = ThemeData()
 
     fun initIcon(iconFile: File) {
         val image = ImageIO.read(iconFile)
-        sizeByIconName[iconFile.nameWithoutExtension] = UIPoint(image.width.toFloat(), image.height.toFloat())
+        sizeByIconName[iconFile.nameWithoutExtension] = XmlPoint(image.width.toFloat(), image.height.toFloat())
     }
 
     fun initThemeData(themeDataFile: File) {
@@ -27,7 +27,7 @@ object UIIconManager {
         globalThemeData.putAll(themeData)
     }
 
-    fun getIconSize(container: Container): UIPoint? {
+    fun getIconSize(container: Container): XmlPoint? {
         val iconName = container.uri
         if (iconName.isNotEmpty() && iconName != "null") {
             return getIconSize(iconName)
@@ -36,7 +36,7 @@ object UIIconManager {
         if (themeId.isNotEmpty() && themeId != "null") {
             val theme = globalThemeData[themeId] ?: return null
             if (theme.scale9Grid.width != 0 && theme.scale9Grid.height != 0) {
-                return UIPoint(
+                return XmlPoint(
                     (theme.scale9Grid.x * 2 + theme.scale9Grid.width).toFloat(),
                     (theme.scale9Grid.y * 2 + theme.scale9Grid.height).toFloat()
                 )
@@ -46,7 +46,7 @@ object UIIconManager {
         return null
     }
 
-    private fun getIconSize(iconName: String): UIPoint? {
+    private fun getIconSize(iconName: String): XmlPoint? {
         val lastSlashIndex = iconName.lastIndexOf("/")
         val iconNameWithoutPath = if (lastSlashIndex > 0) {
             iconName.substring(lastSlashIndex + 1)

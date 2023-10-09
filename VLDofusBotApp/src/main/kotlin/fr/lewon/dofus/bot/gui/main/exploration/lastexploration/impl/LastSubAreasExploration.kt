@@ -22,6 +22,10 @@ class LastSubAreasExploration(progressBySubArea: Map<DofusSubArea, ExplorationPr
             ExploreMapsScriptBuilder.explorationTypeParameter,
             ExploreMapsScriptBuilder.ExplorationType.SubArea
         )
-        parameterValues.updateParamValue(ExploreMapsScriptBuilder.subAreasParameter, getItemsToExploreAgain())
+        parameterValues.updateParamValue(
+            ExploreMapsScriptBuilder.itemIdToResumeOnParameter,
+            getItemsToExploreAgain().firstOrNull()?.id?.toString() ?: ""
+        )
+        parameterValues.updateParamValue(ExploreMapsScriptBuilder.subAreasParameter, progressByItem.keys.toList())
     }
 }

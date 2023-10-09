@@ -1,10 +1,8 @@
 package fr.lewon.dofus.bot.core.d2o.managers.spell
 
-import fr.lewon.dofus.bot.core.VldbCoreInitializer
 import fr.lewon.dofus.bot.core.VldbManager
 import fr.lewon.dofus.bot.core.criterion.DofusCriterionParser
 import fr.lewon.dofus.bot.core.d2o.D2OUtil
-import fr.lewon.dofus.bot.core.i18n.I18NUtil
 import fr.lewon.dofus.bot.core.model.spell.*
 
 object SpellLevelManager : VldbManager {
@@ -12,72 +10,42 @@ object SpellLevelManager : VldbManager {
     private lateinit var spellLevelById: Map<Int, DofusSpellLevel>
 
     override fun initManager() {
-        val spellNameBySpellId = buildSpellNameBySpellId()
-        spellLevelById = D2OUtil.getObjects("SpellLevels")
-            .filter { !VldbCoreInitializer.DEBUG || spellNameBySpellId[it["spellId"].toString().toInt()] != null }
-            .associate {
-                val id = it["id"].toString().toInt()
-                val spellId = it["spellId"].toString().toInt()
-                if (VldbCoreInitializer.DEBUG) {
-                    println("------")
-                    println("$spellId - ${spellNameBySpellId[spellId]}")
-                }
-                val criticalHitProbability = it["criticalHitProbability"].toString().toInt()
-                val needFreeCell = it["needFreeCell"].toString().toBoolean()
-                val needTakenCell = it["needTakenCell"].toString().toBoolean()
-                val maxRange = it["range"].toString().toInt()
-                val minRange = it["minRange"].toString().toInt()
-                val castInLine = it["castInLine"].toString().toBoolean()
-                val rangeCanBeBoosted = it["rangeCanBeBoosted"].toString().toBoolean()
-                val apCost = it["apCost"].toString().toInt()
-                val castInDiagonal = it["castInDiagonal"].toString().toBoolean()
-                val initialCooldown = it["initialCooldown"].toString().toInt()
-                val castTestLos = it["castTestLos"].toString().toBoolean()
-                val minCastInterval = it["minCastInterval"].toString().toInt()
-                val maxStack = it["maxStack"].toString().toInt()
-                val grade = it["grade"].toString().toInt()
-                val minPlayerLevel = it["minPlayerLevel"].toString().toInt()
-                val maxCastPerTarget = it["maxCastPerTarget"].toString().toInt()
-                val maxCastPerTurn = it["maxCastPerTurn"].toString().toInt()
-                val forClientOnly = it["forClientOnly"].toString().toBoolean()
-                if (VldbCoreInitializer.DEBUG) {
-                    println("Effects : ")
-                }
-                val unparsedEffects = it["effects"] as List<Map<String, Any>>?
-                val effects = parseEffects(unparsedEffects)
-                if (VldbCoreInitializer.DEBUG) {
-                    println("Critical effects : ")
-                }
-                val criticalEffects = parseEffects(it["criticalEffect"] as List<Map<String, Any>>?)
-                val isParsedCompletely = unparsedEffects?.size == effects.size
-                val statesCriterionStr = it["statesCriterion"].toString()
-                val statesCriterion = if (statesCriterionStr != "" && statesCriterionStr != "null") {
-                    DofusCriterionParser.parse(statesCriterionStr)
-                } else DofusCriterionParser.DofusTrueCriterion
-                id to DofusSpellLevel(
-                    id, spellId, criticalHitProbability, needFreeCell, needTakenCell, maxRange, minRange, castInLine,
-                    rangeCanBeBoosted, apCost, castInDiagonal, initialCooldown, castTestLos, minCastInterval,
-                    maxStack, grade, minPlayerLevel, maxCastPerTarget, maxCastPerTurn, forClientOnly,
-                    effects, criticalEffects, isParsedCompletely, statesCriterion
-                )
-            }
-    }
-
-    private fun buildSpellNameBySpellId(): Map<Int, String?> {
-        if (VldbCoreInitializer.DEBUG) {
-            val spellIds = ArrayList<Int>()
-            D2OUtil.getObjects("SpellVariants").forEach {
-                spellIds.addAll(it["spellIds"] as List<Int>)
-            }
-            return D2OUtil.getObjects("Spells")
-                .filter { spellIds.contains(it["id"].toString().toInt()) }
-                .associate {
-                    val id = it["id"].toString().toInt()
-                    val nameId = it["nameId"].toString().toInt()
-                    id to I18NUtil.getLabel(nameId)
-                }
+        spellLevelById = D2OUtil.getObjects("SpellLevels").associate {
+            val id = it["id"].toString().toInt()
+            val spellId = it["spellId"].toString().toInt()
+            val criticalHitProbability = it["criticalHitProbability"].toString().toInt()
+            val needFreeCell = it["needFreeCell"].toString().toBoolean()
+            val needTakenCell = it["needTakenCell"].toString().toBoolean()
+            val maxRange = it["range"].toString().toInt()
+            val minRange = it["minRange"].toString().toInt()
+            val castInLine = it["castInLine"].toString().toBoolean()
+            val rangeCanBeBoosted = it["rangeCanBeBoosted"].toString().toBoolean()
+            val apCost = it["apCost"].toString().toInt()
+            val castInDiagonal = it["castInDiagonal"].toString().toBoolean()
+            val initialCooldown = it["initialCooldown"].toString().toInt()
+            val castTestLos = it["castTestLos"].toString().toBoolean()
+            val minCastInterval = it["minCastInterval"].toString().toInt()
+            val maxStack = it["maxStack"].toString().toInt()
+            val grade = it["grade"].toString().toInt()
+            val minPlayerLevel = it["minPlayerLevel"].toString().toInt()
+            val maxCastPerTarget = it["maxCastPerTarget"].toString().toInt()
+            val maxCastPerTurn = it["maxCastPerTurn"].toString().toInt()
+            val forClientOnly = it["forClientOnly"].toString().toBoolean()
+            val unparsedEffects = it["effects"] as List<Map<String, Any>>?
+            val effects = parseEffects(unparsedEffects)
+            val criticalEffects = parseEffects(it["criticalEffect"] as List<Map<String, Any>>?)
+            val isParsedCompletely = unparsedEffects?.size == effects.size
+            val statesCriterionStr = it["statesCriterion"].toString()
+            val statesCriterion = if (statesCriterionStr != "" && statesCriterionStr != "null") {
+                DofusCriterionParser.parse(statesCriterionStr)
+            } else DofusCriterionParser.DofusTrueCriterion
+            id to DofusSpellLevel(
+                id, spellId, criticalHitProbability, needFreeCell, needTakenCell, maxRange, minRange, castInLine,
+                rangeCanBeBoosted, apCost, castInDiagonal, initialCooldown, castTestLos, minCastInterval,
+                maxStack, grade, minPlayerLevel, maxCastPerTarget, maxCastPerTurn, forClientOnly,
+                effects, criticalEffects, isParsedCompletely, statesCriterion
+            )
         }
-        return emptyMap()
     }
 
     private fun parseEffects(effectsMaps: List<Map<String, Any>>?): List<DofusSpellEffect> {
@@ -91,30 +59,15 @@ object SpellLevelManager : VldbManager {
             return null
         }
         val spellEffectType = DofusSpellEffectType.fromEffectId(effectId)
-            ?: if (VldbCoreInitializer.DEBUG) effectIdError(effectId) else return null
+            ?: return null
         val rawZone = effectMap["rawZone"].toString()
         val area = parseEffectArea(rawZone)
-            ?: if (VldbCoreInitializer.DEBUG) error("Failed parse raw zone : $rawZone") else return null
-        if (VldbCoreInitializer.DEBUG) {
-            println(spellEffectType)
-        }
+            ?: return null
         val targets = DofusSpellTarget.fromString(effectMap["targetMask"].toString())
-        if (VldbCoreInitializer.DEBUG) {
-            println(targets)
-        }
         val min = effectMap["diceNum"].toString().toInt()
         val max = effectMap["diceSide"].toString().toInt()
         val value = effectMap["value"].toString().toInt()
         return DofusSpellEffect(min, max, value, area, spellEffectType, targets)
-    }
-
-    private fun effectIdError(effectId: Int): DofusSpellEffectType {
-        D2OUtil.getObjects("Effects").firstOrNull { it["id"].toString().toInt() == effectId }?.let {
-            val descriptionId = it["descriptionId"].toString().toInt()
-            println(I18NUtil.getLabel(descriptionId))
-            println(it)
-        }
-        error("Failed parse effect type : $effectId")
     }
 
     private fun parseEffectArea(effectAreaStr: String): DofusEffectArea? {
@@ -135,9 +88,4 @@ object SpellLevelManager : VldbManager {
         return spellLevelById[id] ?: error("No spell for id : $id")
     }
 
-}
-
-fun main() {
-    VldbCoreInitializer.DEBUG = true
-    VldbCoreInitializer.initAll()
 }

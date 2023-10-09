@@ -1,8 +1,8 @@
 package fr.lewon.dofus.bot.core.d2p.elem.graphical.impl
 
-import fr.lewon.dofus.bot.core.io.stream.ByteArrayReader
 import fr.lewon.dofus.bot.core.d2p.elem.graphical.GraphicalElementData
-import fr.lewon.dofus.bot.core.ui.UIPoint
+import fr.lewon.dofus.bot.core.io.stream.ByteArrayReader
+import fr.lewon.dofus.bot.core.ui.geometry.ui.UIPoint
 
 open class NormalGraphicalElementData(elementId: Int, elementType: Int) : GraphicalElementData(elementId, elementType) {
 

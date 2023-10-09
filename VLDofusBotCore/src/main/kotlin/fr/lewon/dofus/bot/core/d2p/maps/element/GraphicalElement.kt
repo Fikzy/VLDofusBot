@@ -3,8 +3,7 @@ package fr.lewon.dofus.bot.core.d2p.maps.element
 import fr.lewon.dofus.bot.core.d2p.maps.D2PMapsAdapter
 import fr.lewon.dofus.bot.core.d2p.maps.cell.Cell
 import fr.lewon.dofus.bot.core.io.stream.ByteArrayReader
-import fr.lewon.dofus.bot.core.ui.UIPoint
-
+import fr.lewon.dofus.bot.core.ui.geometry.ui.UIPoint
 
 class GraphicalElement(cell: Cell) : BasicElement(cell, ElementType.GRAPHICAL.typeValue) {
 
@@ -23,7 +22,7 @@ class GraphicalElement(cell: Cell) : BasicElement(cell, ElementType.GRAPHICAL.ty
             this.pixelOffset.x = stream.readShort().toFloat()
             this.pixelOffset.y = stream.readShort().toFloat()
         }
-        altitude = stream.readUnsignedByte()
+        altitude = stream.readByte().toInt()
         identifier = stream.readInt()
     }
 

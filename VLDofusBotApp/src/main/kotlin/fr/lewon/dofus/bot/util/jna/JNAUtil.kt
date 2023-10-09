@@ -11,7 +11,7 @@ import fr.lewon.dofus.bot.util.network.info.GameInfo
 import java.awt.Point
 import java.awt.Rectangle
 import java.awt.image.BufferedImage
-
+import kotlin.math.roundToInt
 
 object JNAUtil {
 
@@ -51,17 +51,16 @@ object JNAUtil {
             var y = 0
             var width = rect.right - rect.left
             var height = rect.bottom - rect.top
-            gameInfo.completeBounds = Rectangle(x, y, width, height)
 
             val targetRatio = 5f / 4f
             val ratio = width.toFloat() / height.toFloat()
             val keepWidth = ratio < targetRatio
             if (keepWidth) {
-                val newHeight = (width / targetRatio).toInt()
+                val newHeight = (width / targetRatio).roundToInt()
                 y += (height - newHeight) / 2
                 height = newHeight
             } else {
-                val newWidth = (height * targetRatio).toInt()
+                val newWidth = (height * targetRatio).roundToInt()
                 x += (width - newWidth) / 2
                 width = newWidth
             }
