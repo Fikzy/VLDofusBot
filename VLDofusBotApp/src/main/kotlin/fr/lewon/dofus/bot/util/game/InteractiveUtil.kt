@@ -47,8 +47,8 @@ object InteractiveUtil {
 
     private val INVALID_SKILL_IDS = listOf(339, 360, 361, 362)
 
-    private val MinClickPoint = PointRelative(0.03f, 0.018f).toUIPoint()
-    private val MaxClickPoint = PointRelative(0.97f, 0.875f).toUIPoint()
+    private val MinClickPoint = PointRelative(0f, 0.018f).toUIPoint()
+    private val MaxClickPoint = PointRelative(1f, 0.875f).toUIPoint()
 
     fun getElementCellData(gameInfo: GameInfo, interactiveElement: InteractiveElement): CompleteCellData =
         gameInfo.mapData.completeCellDataByCellId.values
@@ -187,7 +187,7 @@ object InteractiveUtil {
             (0..sectionsCountY).map { sectionY ->
                 UIPoint(
                     minX + width / 5f + sectionX.toFloat() / sectionsCountX * width * 3f / 5f,
-                    minY + height / 10f + sectionY.toFloat() / sectionsCountY * height / 2f,
+                    minY + height / 10f + sectionY.toFloat() / sectionsCountY * height * 6f / 10f,
                 )
             }
         }

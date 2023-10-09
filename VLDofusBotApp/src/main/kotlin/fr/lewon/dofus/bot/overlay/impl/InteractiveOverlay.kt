@@ -17,7 +17,6 @@ import java.awt.Point
 import java.awt.Rectangle
 import java.awt.geom.AffineTransform
 import java.awt.image.BufferedImage
-import javax.swing.JButton
 import javax.swing.JPanel
 
 object InteractiveOverlay : AbstractOverlay() {
@@ -46,15 +45,6 @@ object InteractiveOverlay : AbstractOverlay() {
     }
 
     private class InteractiveOverlayPanel(overlay: AbstractOverlay) : AbstractOverlayPanel(overlay) {
-
-        private val refreshButton = JButton("Refresh")
-
-        init {
-            refreshButton.addActionListener {
-                updateInteractives(gameInfo)
-            }
-            add(refreshButton)
-        }
 
         private data class InteractiveData(
             val interactiveElement: InteractiveElement,

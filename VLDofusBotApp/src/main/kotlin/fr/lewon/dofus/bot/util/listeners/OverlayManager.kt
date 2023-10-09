@@ -26,13 +26,11 @@ object OverlayManager {
             toToggleOverlay.overlay.isVisible = false
             displayedOverlay = null
         } else if (GlobalConfigManager.readConfig().run { displayOverlays && shouldDisplayOverlay(toToggleOverlay) }) {
-            val characterUIStates = CharactersUIUtil.getSelectedCharactersUIStates()
-            if (characterUIStates.size != 1) {
+            val gameInfo = getSelectedCharacterGameInfo()
+            if (gameInfo == null) {
                 println("Select exactly one character to display an overlay")
             } else {
-                val character = CharacterManager.getCharacter(characterUIStates.first().name) ?: return
-                val connection = GameSnifferUtil.getFirstConnection(character) ?: return
-                toToggleOverlay.overlay.updateOverlay(GameSnifferUtil.getGameInfoByConnection(connection))
+                toToggleOverlay.overlay.updateOverlay(gameInfo)
                 displayedOverlay?.overlay?.isVisible = false
                 toToggleOverlay.overlay.isVisible = true
                 displayedOverlay = toToggleOverlay
@@ -40,10 +38,23 @@ object OverlayManager {
         }
     }
 
+    private fun getSelectedCharacterGameInfo(): GameInfo? {
+        val characterUIStates = CharactersUIUtil.getSelectedCharactersUIStates()
+        val characterName = characterUIStates.firstOrNull()?.name
+            ?: return null
+        val character = CharacterManager.getCharacter(characterName)
+            ?: return null
+        val connection = GameSnifferUtil.getFirstConnection(character)
+            ?: return null
+        return GameSnifferUtil.getGameInfoByConnection(connection)
+    }
+
     @Synchronized
     fun updateDisplayedOverlay(gameInfo: GameInfo) {
         try {
-            displayedOverlay?.overlay?.updateOverlay(gameInfo)
+            if (gameInfo == getSelectedCharacterGameInfo()) {
+                displayedOverlay?.overlay?.updateOverlay(gameInfo)
+            }
         } catch (e: Throwable) {
             e.printStackTrace()
         }
