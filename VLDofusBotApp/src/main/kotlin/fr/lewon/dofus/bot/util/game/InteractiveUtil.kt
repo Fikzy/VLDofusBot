@@ -175,8 +175,8 @@ object InteractiveUtil {
         val gfx = getInteractiveGfx(elementData)
             ?: return emptyList()
         val horizontalSymmetry = isReversedHorizontally(elementData)
-        val sectionsCountX = 18
-        val sectionsCountY = 12
+        val sectionsCountX = 30
+        val sectionsCountY = 30
         val minX = cropDelta.leftDelta
         val maxX = gfx.width - cropDelta.rightDelta
         val width = maxOf(0f, maxX - minX)

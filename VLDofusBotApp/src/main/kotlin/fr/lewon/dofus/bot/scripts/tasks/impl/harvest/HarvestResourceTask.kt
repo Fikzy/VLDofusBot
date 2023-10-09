@@ -83,6 +83,7 @@ class HarvestResourceTask(private val interactiveElement: InteractiveElement) : 
             if (!FightTask().run(logItem, gameInfo)) {
                 throw DofusBotTaskFatalException("Fight has failed.")
             }
+            return true
         }
         return gameInfo.eventStore.getLastEvent(ObjectQuantityMessage::class.java) != null ||
             gameInfo.eventStore.getLastEvent(ObjectAddedMessage::class.java) != null
