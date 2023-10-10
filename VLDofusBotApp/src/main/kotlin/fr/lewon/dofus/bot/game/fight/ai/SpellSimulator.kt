@@ -70,7 +70,7 @@ class SpellSimulator(val dofusBoard: DofusBoard) {
         val affectedCellIds =
             FightSpellAreaUtils.getAffectedCells(dofusBoard, fightBoard, casterCellId, targetCellId, effect.area)
         val fightersInAOE = affectedCellIds.mapNotNull { fightBoard.getFighter(it) }
-            .filter { effect.canHitTarget(caster, it) }
+            .filter { it.getCurrentHp() > 0 && effect.canHitTarget(caster, it) }
         when (effect.effectType) {
             DofusSpellEffectType.MP_BUFF ->
                 simulateBuff(fightersInAOE, DofusCharacteristics.MOVEMENT_POINTS, effect.min)

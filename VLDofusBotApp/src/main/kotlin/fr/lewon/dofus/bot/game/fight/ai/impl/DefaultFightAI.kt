@@ -51,9 +51,11 @@ open class DefaultFightAI(dofusBoard: DofusBoard, aiComplement: AIComplement) : 
                 }
                 for (move in node.state.getPossibleOperations()) {
                     val childState = node.state.deepCopy()
-                    childState.makeMove(move)
-                    val operations = ArrayList(node.operations).also { it.add(move) }
                     val isPassTurn = move == PassTurnOperation
+                    if (!isPassTurn) {
+                        childState.makeMove(move)
+                    }
+                    val operations = ArrayList(node.operations).also { it.add(move) }
                     val childNodeScore = if (isPassTurn) node.score else childState.evaluate()
                     val childNode = Node(childState, operations, childNodeScore)
                     if (!isPassTurn) {

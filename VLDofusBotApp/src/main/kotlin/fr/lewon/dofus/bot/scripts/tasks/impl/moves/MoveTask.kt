@@ -30,6 +30,7 @@ import kotlin.math.min
 class MoveTask(
     private val transitions: List<Transition>,
     private val harvestEnabled: Boolean = true,
+    private val harvestAtArrival: Boolean = false,
 ) : BooleanDofusBotTask() {
 
     override fun onStarted(): String {
@@ -45,7 +46,9 @@ class MoveTask(
                 return false
             }
         }
-        harvestIfNeeded(logItem, gameInfo, itemIdsToHarvest)
+        if (harvestAtArrival) {
+            harvestIfNeeded(logItem, gameInfo, itemIdsToHarvest)
+        }
         return true
     }
 

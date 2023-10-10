@@ -32,9 +32,13 @@ class HarvestResourceTask(private val interactiveElement: InteractiveElement) : 
                 skillId = interactiveElement.enabledSkills.first().skillId
             )
         } catch (e: Exception) {
-            closeInteractiveUseFailurePopup(gameInfo)
-            gameInfo.logger.closeLog("KO", sendClickLogItem)
-            return false
+            if (e is DofusBotTaskFatalException || e is InterruptedException || e is IllegalMonitorStateException) {
+                throw e
+            } else {
+                closeInteractiveUseFailurePopup(gameInfo)
+                gameInfo.logger.closeLog("KO", sendClickLogItem)
+                return false
+            }
         }
         gameInfo.logger.closeLog("OK", sendClickLogItem)
 

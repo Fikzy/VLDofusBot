@@ -8,7 +8,7 @@ abstract class DofusBotTask<T> {
     protected abstract fun execute(logItem: LogItem, gameInfo: GameInfo): T
 
     protected open fun onFailed(error: Throwable): String {
-        return "KO - [${error.localizedMessage}]"
+        return "KO - [${if (error is InterruptedException) "EXECUTION STOPPED" else error.localizedMessage}]"
     }
 
     protected open fun onSucceeded(value: T): String {

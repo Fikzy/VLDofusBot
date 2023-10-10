@@ -51,10 +51,11 @@ object ScriptRunner : ListenableByCharacter<ScriptRunnerListener>(), CharacterMa
                 onScriptOk(character, logItem)
             } catch (e: Throwable) {
                 when (e) {
-                    is ThreadDeath,
                     is InterruptedException,
-                    is IllegalMonitorStateException -> onScriptCanceled(character, logItem)
-                    else -> onScriptKo(character, e, logItem)
+                    is IllegalMonitorStateException ->
+                        onScriptCanceled(character, logItem)
+                    else ->
+                        onScriptKo(character, e, logItem)
                 }
             }
         }
@@ -90,7 +91,7 @@ object ScriptRunner : ListenableByCharacter<ScriptRunnerListener>(), CharacterMa
 
     @Synchronized
     fun stopScript(characterName: String) {
-        RUNNING_SCRIPT_BY_CHARACTER_NAME.remove(characterName)?.thread?.stop()
+        RUNNING_SCRIPT_BY_CHARACTER_NAME.remove(characterName)?.thread?.interrupt()
     }
 
     private fun onScriptKo(character: DofusCharacter, t: Throwable, logItem: LogItem) {

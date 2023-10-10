@@ -30,7 +30,7 @@ open class ReachMapTask(
         val destMap = path.lastOrNull()?.edge?.to?.mapId?.let { MapManager.getDofusMap(it) }
             ?: error("No transition in path")
         val subLogItem = gameInfo.logger.addSubLog("Moving to map : ${destMap.coordinates} ...", logItem)
-        return MoveTask(transitions = path, harvestEnabled = harvestEnabled).run(subLogItem, gameInfo).also {
+        return MoveTask(path, harvestEnabled, true).run(subLogItem, gameInfo).also {
             gameInfo.logger.closeLog(if (it) "OK" else "KO", subLogItem, it)
         }
     }
