@@ -23,7 +23,7 @@ import fr.lewon.dofus.bot.util.filemanagers.impl.HarvestableSetsManager
 @Composable
 fun SelectedHarvestableSetContent() {
     val selectedSetName = JobsUiUtil.selectedSetName.value
-    val toHarvestItemIds = JobsUiUtil.harvestableIdsBySetName.value[selectedSetName]
+    val toHarvestItemIds = selectedSetName?.let { JobsUiUtil.harvestableIdsBySetName.value[selectedSetName] }
         ?: emptySet()
     VerticalGrid(columns = HarvestJobs.entries.size, items = HarvestJobs.entries) { job ->
         Column(Modifier.padding(5.dp).grayBoxStyle()) {
